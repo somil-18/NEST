@@ -8,6 +8,7 @@ from config import Config
 from models import db, User, Listing
 from utils.email_utils import send_verification_email, confirm_email_token
 
+
 # app setup
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -20,9 +21,11 @@ ph = PasswordHasher()
 
 CORS(app, resources={r"/*": {"origins": app.config['FRONTEND_URL']}}, supports_credentials=True)
 
+
 @app.route('/helloworld')
 def hello():
     return {"success": True, "message": "Hello"}, 200
+
 
 # email confirmation
 @app.route('/confirm/<token>')
@@ -41,6 +44,7 @@ def confirm_email(token):
     user.is_verified = True
     db.session.commit()
     return {"success": True, "message": "Email verified successfully"}, 200
+
 
 # registration
 class UserRegistration(Resource):
@@ -127,14 +131,6 @@ class TokenRefresh(Resource):
         return {"success": True, "access_token": new_access_token}, 200
 
 
-# protected routes
-
-# class ProtectedResource(Resource):
-#     @jwt_required()
-#     def get(self):
-#         current_user_id = int(get_jwt_identity())
-#         return {"success": True, "message": f"Hello user {current_user_id}"}, 200
-
 # create listing
 class ListingCreate(Resource):
     @jwt_required()
@@ -152,7 +148,18 @@ class ListingCreate(Resource):
         listing = Listing(title=title, description=description, price=price, location=location, owner_id=owner_id)
         db.session.add(listing)
         db.session.commit()
-        return {"success": True, "message": "Listing created successfully"}, 201
+
+        listings = {
+            "id": listing.id,
+            "title": listing.title,
+            "description": listing.description,
+            "price": listing.price,
+            "location": listing.location,
+            "owner_id": listing.owner_id
+        }
+
+
+        return {"success": True, "data": listings, "message": "Listing created successfully"}, 201
 
 
 # read all listings (Public)
@@ -160,7 +167,8 @@ class ListingList(Resource):
     def get(self):
         listings = Listing.query.all()
         result = [{"id": l.id, "title": l.title, "price": l.price, "location": l.location} for l in listings]
-        return {"success": True, "listings": result}, 200
+
+        return {"success": True, "data": result, "message": "Listings fetched successfully"}, 200
 
 
 # update listing (Owner Only)
@@ -181,7 +189,17 @@ class ListingUpdate(Resource):
         listing.price = data.get("price", listing.price)
         listing.location = data.get("location", listing.location)
         db.session.commit()
-        return {"success": True, "message": "Listing updated successfully"}, 200
+
+        updated_listing = {
+            "id": listing.id,
+            "title": listing.title,
+            "description": listing.description,
+            "price": listing.price,
+            "location": listing.location,
+            "owner_id": listing.owner_id
+        }
+
+        return {"success": True, "data": updated_listing, "message": "Listing updated successfully"}, 200
 
 
 # delete listing (Owner Only)
@@ -198,20 +216,22 @@ class ListingDelete(Resource):
 
         db.session.delete(listing)
         db.session.commit()
-        return {"success": True, "message": "Listing deleted successfully"}, 200
+        return {"success": True, "data": listing_id, "message": "Listing deleted successfully"}, 200
 
-# register resources
+
+# end points
 api.add_resource(UserRegistration, "/register")
 api.add_resource(UserLogin, "/login")
 api.add_resource(TokenRefresh, "/refresh")
-# api.add_resource(ProtectedResource, "/secure")
 api.add_resource(ListingCreate, "/listings/create")
 api.add_resource(ListingList, "/listings")
 api.add_resource(ListingUpdate, "/listings/<int:listing_id>")
 api.add_resource(ListingDelete, "/listings/<int:listing_id>")
+
 
 # run app
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
