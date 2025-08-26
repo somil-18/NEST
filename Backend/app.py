@@ -71,6 +71,10 @@ class UserRegistration(Resource):
             new_user = User(username=username, email=email, password=hashed_pw, role=role)
             db.session.add(new_user)
             db.session.commit()
+
+            send_verification_email(mail, new_user.email)
+            return {"success": True, "message": "User registered successfully. Check your email to verify."}, 201
+        
         except Exception as e:
             db.session.rollback()
             return {"success": False, "message": f"Database error: {str(e)}"}, 500
@@ -243,6 +247,7 @@ class ListingDelete(Resource):
         db.session.delete(listing)
         db.session.commit()
         return {"success": True, "data": listing_id, "message": "Listing deleted successfully"}, 200
+
 
 
 # end points
