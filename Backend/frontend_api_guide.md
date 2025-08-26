@@ -43,7 +43,7 @@ http://localhost:5000
 **Request Body (JSON):**
 ```json
 {
-  "username": "string", // OR email
+  "username": "string",
   "password": "string"
 }
 ```
