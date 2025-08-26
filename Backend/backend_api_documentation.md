@@ -201,8 +201,10 @@ Authorization: Bearer <access_token>
     {
       "id": 1,
       "title": "...",
+      "description": "...",
       "price": 1000,
-      "location": "..."
+      "location": "...",
+      "owner_id": 1
     }
   ],
   "message": "Listings fetched successfully"
