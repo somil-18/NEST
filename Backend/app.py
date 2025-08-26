@@ -85,17 +85,15 @@ class UserRegistration(Resource):
 class UserLogin(Resource):
     def post(self):
         data = request.get_json()
-        username_or_email = data.get("username")  # can be username or email
+        username = data.get("username")  
         password = data.get("password")
 
         # check for missing fields
-        if not username_or_email or not password:
-            return {"success": False, "message": "Missing username/email or password"}, 400
+        if not username or not password:
+            return {"success": False, "message": "Missing username or password"}, 400
 
-        # check user by username or email
-        user = User.query.filter(
-            (User.username == username_or_email) | (User.email == username_or_email)
-        ).first()
+        # check user by username
+        user = User.query.filter((User.username == username)).first()
 
         if not user:
             return {"success": False, "message": "Invalid credentials"}, 401
