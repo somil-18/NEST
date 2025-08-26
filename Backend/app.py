@@ -4,6 +4,7 @@ from flask_jwt_extended import JWTManager, create_access_token, create_refresh_t
 from flask_mail import Mail
 from flask_cors import CORS
 from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 from config import Config
 from models import db, User, Listing
 from utils.email_utils import send_verification_email, confirm_email_token
@@ -53,11 +54,15 @@ class UserRegistration(Resource):
         username = data.get("username")
         email = data.get("email")
         password = data.get("password")
-        role = data.get("role", "user")  # default role is "user"
+        role = data.get("role")
 
         # check required fields
-        if not username or not email or not password:
+        if not username or not email or not password or not role:
             return {"success": False, "message": "Missing fields"}, 400
+        
+        if role not in ["user", "owner"]:
+            return {"success": False, "message": "Invalid role"}, 400
+
 
         # check if username/email already exist
         existing_user = User.query.filter(
@@ -73,9 +78,15 @@ class UserRegistration(Resource):
             new_user = User(username=username, email=email, password=hashed_pw, role=role)
             db.session.add(new_user)
             db.session.commit()
+
             # send verification email
-            send_verification_email(mail, email)
-            return {"success": True, "message": "Check email for verification link"}, 201
+            try:
+                send_verification_email(mail, email)
+                return {"success": True, "message": "Check email for verification link"}, 201
+            except Exception:
+                return {"success": False, "message": "User created but email failed"}, 500
+
+        
         except:
             db.session.rollback()
             return {"success": False, "message": "Database error"}, 500
@@ -101,8 +112,9 @@ class UserLogin(Resource):
         # verify password safely
         try:
             ph.verify(user.password, password)
-        except Exception:
+        except VerifyMismatchError:
             return {"success": False, "message": "Invalid credentials"}, 401
+
 
         # check if user is verified
         if not user.is_verified:
@@ -180,7 +192,7 @@ class ListingCreate(Resource):
 class ListingList(Resource):
     def get(self):
         listings = Listing.query.all()
-        result = [{"id": l.id, "title": l.title, "price": l.price, "location": l.location} for l in listings]
+        result = [{"id": l.id, "title": l.title, "description": l.description, "price": l.price, "location": l.location} for l in listings]
 
         return {"success": True, "data": result, "message": "Listings fetched successfully"}, 200
 
