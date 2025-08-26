@@ -4,6 +4,8 @@ from flask_jwt_extended import JWTManager, create_access_token, create_refresh_t
 from flask_mail import Mail
 from flask_cors import CORS
 from argon2 import PasswordHasher
+from sqlalchemy import or_
+from argon2.exceptions import VerifyMismatchError
 from config import Config
 from models import db, User, Listing
 from utils.email_utils import send_verification_email, confirm_email_token
@@ -53,66 +55,53 @@ class UserRegistration(Resource):
         username = data.get("username")
         email = data.get("email")
         password = data.get("password")
-        role = data.get("role", "user")  # default role is "user"
+        role = data.get("role", "user")  # default to "user"
 
         # check required fields
         if not username or not email or not password:
             return {"success": False, "message": "Missing fields"}, 400
 
         # check if username/email already exist
-        existing_user = User.query.filter(
-            (User.username == username) | (User.email == email)
-        ).first()
+        existing_user = User.query.filter(or_(User.username == username, User.email == email)).first()
         if existing_user:
             return {"success": False, "message": "Username or Email already taken"}, 400
 
         try:
-            # hash password
             hashed_pw = ph.hash(password)
-            # create new user with role
             new_user = User(username=username, email=email, password=hashed_pw, role=role)
             db.session.add(new_user)
             db.session.commit()
-            # send verification email
-            send_verification_email(mail, email)
-            return {"success": True, "message": "Check email for verification link"}, 201
-        except:
+        except Exception as e:
             db.session.rollback()
-            return {"success": False, "message": "Database error"}, 500
+            return {"success": False, "message": f"Database error: {str(e)}"}, 500
+
 
 
 # login
 class UserLogin(Resource):
     def post(self):
         data = request.get_json()
-        username_or_email = data.get("username")  # can be username or email
+        username_or_email = data.get("username") or data.get("email")
         password = data.get("password")
 
-        # check for missing fields
         if not username_or_email or not password:
             return {"success": False, "message": "Missing username/email or password"}, 400
 
-        # check user by username or email
-        user = User.query.filter(
-            (User.username == username_or_email) | (User.email == username_or_email)
-        ).first()
+        user = User.query.filter(or_(User.username == username_or_email, User.email == username_or_email)).first()
 
         if not user:
             return {"success": False, "message": "Invalid credentials"}, 401
 
-        # verify password safely
         try:
             ph.verify(user.password, password)
-        except Exception:
+        except VerifyMismatchError:
             return {"success": False, "message": "Invalid credentials"}, 401
 
-        # check if user is verified
         if not user.is_verified:
             return {"success": False, "message": "Email not verified. Check your inbox."}, 403
 
-        # generate tokens
-        access_token = create_access_token(identity=str(user.id))
-        refresh_token = create_refresh_token(identity=str(user.id))
+        access_token = create_access_token(identity=user.id)
+        refresh_token = create_refresh_token(identity=user.id)
 
         return {
             "success": True,
@@ -131,21 +120,37 @@ class TokenRefresh(Resource):
         return {"success": True, "access_token": new_access_token}, 200
 
 
-# create listing
+# create listing (Owner Only)
 class ListingCreate(Resource):
     @jwt_required()
     def post(self):
+        # get current user
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+
+        # check role
+        if not user or user.role != "owner":
+            return {"success": False, "message": "Only owners can create listings"}, 403
+
+        # get data
         data = request.get_json()
         title = data.get("title")
         description = data.get("description")
         price = data.get("price")
         location = data.get("location")
-        owner_id = int(get_jwt_identity())  # current user ID from token
 
+        # validate required fields
         if not title or not price or not location:
             return {"success": False, "message": "Missing required fields"}, 400
 
-        listing = Listing(title=title, description=description, price=price, location=location, owner_id=owner_id)
+        # create listing
+        listing = Listing(
+            title=title,
+            description=description,
+            price=price,
+            location=location,
+            owner_id=user_id
+        )
         db.session.add(listing)
         db.session.commit()
 
@@ -158,8 +163,8 @@ class ListingCreate(Resource):
             "owner_id": listing.owner_id
         }
 
-
         return {"success": True, "data": listings, "message": "Listing created successfully"}, 201
+
 
 
 # read all listings (Public)
@@ -175,19 +180,30 @@ class ListingList(Resource):
 class ListingUpdate(Resource):
     @jwt_required()
     def put(self, listing_id):
-        owner_id = int(get_jwt_identity())
-        listing = Listing.query.get(listing_id)
+        # get current user
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
 
+        # check role first
+        if not user or user.role != "owner":
+            return {"success": False, "message": "Only owners can update listings"}, 403
+
+        # fetch listing
+        listing = Listing.query.get(listing_id)
         if not listing:
             return {"success": False, "message": "Listing not found"}, 404
-        if listing.owner_id != owner_id:
+
+        # check ownership
+        if listing.owner_id != user_id:
             return {"success": False, "message": "Unauthorized"}, 403
 
+        # update listing fields
         data = request.get_json()
         listing.title = data.get("title", listing.title)
         listing.description = data.get("description", listing.description)
         listing.price = data.get("price", listing.price)
         listing.location = data.get("location", listing.location)
+
         db.session.commit()
 
         updated_listing = {
@@ -206,14 +222,24 @@ class ListingUpdate(Resource):
 class ListingDelete(Resource):
     @jwt_required()
     def delete(self, listing_id):
-        owner_id = int(get_jwt_identity())
-        listing = Listing.query.get(listing_id)
+        # get current user
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
 
+        # check role first
+        if not user or user.role != "owner":
+            return {"success": False, "message": "Only owners can delete listings"}, 403
+
+        # fetch listing
+        listing = Listing.query.get(listing_id)
         if not listing:
             return {"success": False, "message": "Listing not found"}, 404
-        if listing.owner_id != owner_id:
+
+        # check ownership
+        if listing.owner_id != user_id:
             return {"success": False, "message": "Unauthorized"}, 403
 
+        # delete listing
         db.session.delete(listing)
         db.session.commit()
         return {"success": True, "data": listing_id, "message": "Listing deleted successfully"}, 200
