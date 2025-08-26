@@ -25,7 +25,7 @@ http://localhost:5000
   "username": "string",
   "email": "string",
   "password": "string",
-  "role": "user" // optional, default is "user". Use "owner" if the user can create listings
+  "role": "string" // user or owner 
 }
 ```
 
