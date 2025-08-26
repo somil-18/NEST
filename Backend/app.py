@@ -290,7 +290,7 @@ class ListingCreate(Resource):
 class ListingList(Resource):
     def get(self):
         listings = Listing.query.all()
-        result = [{"id": l.id, "title": l.title, "description": l.description, "price": l.price, "location": l.location, "Owner_id": l.owner_id} for l in listings]
+        result = [{"id": l.id, "title": l.title, "description": l.description, "price": l.price, "location": l.location, "owner_id": l.owner_id} for l in listings]
 
         return {"success": True, "data": result, "message": "Listings fetched successfully"}, 200
 
@@ -392,4 +392,5 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
 
