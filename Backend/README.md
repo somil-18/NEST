@@ -24,7 +24,7 @@ http://localhost:5000
   "username": "string",
   "email": "string",
   "password": "string",
-  "role": "string"
+  "role": "string" // user or owner
 }
 ```
 
