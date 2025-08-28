@@ -267,7 +267,7 @@ Authorization: Bearer <access_token>
 ---
 ## Booking Endpoints
 
-### 1. Create booking (Owner Only)
+### 1. Create booking (User)
 
 **Endpoint:** `POST /bookings/create`  
 **Headers:**
