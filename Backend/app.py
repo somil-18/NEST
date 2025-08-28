@@ -82,7 +82,6 @@ class UserRegistration(Resource):
         "message": "Password must be at least 8 characters long, include uppercase, lowercase, number, and special character"
     }, 400
 
-
         # check if username/email already exist
         existing_user = User.query.filter(
             (User.username == username) | (User.email == email)
@@ -271,7 +270,8 @@ class ListingCreate(Resource):
             return {"success": False, "message": "User not found"}, 404
 
         # Check role
-        if user.role != "owner":
+        role = user.role.lower()
+        if role != "owner":
             return {"success": False, "message": "Only owners can create listings"}, 403
 
         # Create listing
@@ -323,8 +323,9 @@ class ListingUpdate(Resource):
         if not user:
             return {"success": False, "message": "User not found"}, 404
 
-        # check role
-        if user.role != "owner":
+        # Check role
+        role = user.role.lower()
+        if role != "owner":
             return {"success": False, "message": "Only owners can update listings"}, 403
 
         # fetch listing
@@ -371,8 +372,9 @@ class ListingDelete(Resource):
         if not user:
             return {"success": False, "message": "User not found"}, 404
 
-        # check role
-        if user.role != "owner":
+        # Check role
+        role = user.role.lower()
+        if role != "owner":
             return {"success": False, "message": "Only owners can delete listings"}, 403
 
         # fetch listing
@@ -397,7 +399,7 @@ class ListingDelete(Resource):
 # BOOKING
 
 from datetime import datetime
-from flask_jwt_extended import jwt_required, get_jwt_identity
+# from flask_jwt_extended import jwt_required, get_jwt_identity
 
 class BookingCreate(Resource):
     @jwt_required()
@@ -411,7 +413,7 @@ class BookingCreate(Resource):
         if not listing_id or not start_date or not end_date:
             return {"success": False, "message": "Missing fields"}, 400
         
-        # Convert string dates to Python date objects
+        # convert string dates to Python date objects
         try:
             start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
             end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -421,6 +423,10 @@ class BookingCreate(Resource):
         listing = Listing.query.get(listing_id)
         if not listing:
             return {"success": False, "message": "Listing not found"}, 404
+        
+        # prevent owner from booking their own listing
+        if listing.owner_id == user_id:
+                return {"success": False, "message": "You cannot book your own listing"}, 403
 
         # check if already booked for dates
         existing = Booking.query.filter(
@@ -550,6 +556,9 @@ api.add_resource(MyBookings, "/bookings/my")
 api.add_resource(OwnerBookings, "/bookings/owner")
 api.add_resource(BookingUpdate, "/bookings/<int:booking_id>")
 api.add_resource(BookingCancel, "/bookings/<int:booking_id>/cancel")
+
+
+# ********************************************************************************************
 
 
 # run app
