@@ -201,10 +201,8 @@ Authorization: Bearer <access_token>
     {
       "id": 1,
       "title": "...",
-      "description": "...",
       "price": 1000,
-      "location": "...",
-      "owner_id": 1
+      "location": "..."
     }
   ],
   "message": "Listings fetched successfully"
@@ -267,6 +265,127 @@ Authorization: Bearer <access_token>
 ```
 
 ---
+## Booking Endpoints
+
+### 1. Create booking (Owner Only)
+
+**Endpoint:** `POST /bookings/create`  
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body (JSON):**
+```json
+{
+  "listing_id": 1,
+  "start_date": "2025-09-01",
+  "end_date": "2025-09-05"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Booking created successfully",
+  "data": {
+    "id": 10,
+    "listing_id": 1,
+    "user_id": 7,
+    "start_date": "2025-09-01",
+    "end_date": "2025-09-05",
+    "status": "Pending" // by default "pending"
+  }
+}
+```
+
+---
+
+### 2. My bookings (User)
+
+**Endpoint:** `GET /bookings/my`  
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 10,
+      "listing_id": 1,
+      "title": "Cozy Apartment",
+      "location": "New Delhi",
+      "start_date": "2025-09-01",
+      "end_date": "2025-09-05",
+      "status": "Pending"
+    }
+  ]
+}
+```
+
+---
+
+### 3. Owner bookings
+
+**Endpoint:** `GET /bookings/owner`  
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 10,
+      "listing_id": 1,
+      "user_id": 7,
+      "title": "Cozy Apartment",
+      "location": "New Delhi",
+      "start_date": "2025-09-01",
+      "end_date": "2025-09-05",
+      "status": "Pending"
+    }
+  ]
+}
+```
+
+---
+
+### 4. Update booking status (Owner Only)
+
+**Endpoint:** `PUT /bookings/<booking_id>`  
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body (JSON):**
+```json
+{
+  "status": "Confirmed"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Booking status updated successfully",
+  "data": {
+    "id": 10,
+    "listing_id": 1,
+    "user_id": 7,
+    "start_date": "2025-09-01",
+    "end_date": "2025-09-05",
+    "status": "Confirmed"
+  }
+}
+```
+---
 
 ## Email Verification
 
@@ -303,6 +422,18 @@ Once verified, the user can log in.
 | price       | Float         | Not Null                              |
 | location    | String(200)   | Not Null                              |
 | owner_id    | Integer       | Foreign Key to User.id, Not Null       |
+
+### Booking Table
+
+| Column      | Type         | Constraints                           |
+|-------------|--------------|---------------------------------------|
+| id          | Integer       | Primary Key                           |
+| user_id       | Integer   | Foreign key → User.id                           |
+| listing_id | Integer        | Foreign key → Listing.id                           |
+| start_date     | Date         | Booking start date                            |
+| end_date   | Date   | Booking end date                             |
+| status   | String(20)    | Pending/Confirmed/Cancelled     |
+| created_at   | DateTime | Auto timestamp       |
 
 **Relationships:**  
 - Each `Listing` belongs to a `User` (owner).  
