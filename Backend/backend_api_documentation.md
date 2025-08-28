@@ -270,6 +270,7 @@ Authorization: Bearer <access_token>
 ### 1. Create booking (User)
 
 **Endpoint:** `POST /bookings/create`  
+
 **Headers:**
 ```
 Authorization: Bearer <access_token>
@@ -305,6 +306,7 @@ Authorization: Bearer <access_token>
 ### 2. My bookings (User)
 
 **Endpoint:** `GET /bookings/my`  
+**Description:**Returns all bookings by this tenant with status info.
 
 **Response:**
 ```json
@@ -329,6 +331,8 @@ Authorization: Bearer <access_token>
 ### 3. Owner bookings
 
 **Endpoint:** `GET /bookings/owner`  
+**Description:** Fetches all bookings for listings owned by that owner.
+
 **Headers:**
 ```
 Authorization: Bearer <access_token>
@@ -357,7 +361,10 @@ Authorization: Bearer <access_token>
 
 ### 4. Update booking status (Owner Only)
 
-**Endpoint:** `PUT /bookings/<booking_id>`  
+**Endpoint:** `POST /bookings/<booking_id>`  
+**Description:** Verifies owner owns that listing and owner can update status "Confirmed" or "Cancelled"
+
+
 **Headers:**
 ```
 Authorization: Bearer <access_token>
@@ -383,6 +390,25 @@ Authorization: Bearer <access_token>
     "end_date": "2025-09-05",
     "status": "Confirmed"
   }
+}
+```
+
+### 5. Cancel booking (User)
+
+**Endpoint:** `DELETE /bookings/<booking_id>/cancel`  
+**Description:** Deletes booking if not confirmed yet (or you can allow even after confirmation).
+
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Booking cancelled"
 }
 ```
 ---
