@@ -166,6 +166,7 @@ Authorization: Bearer <access_token>
 {
   "title": "string",
   "description": "string",
+  "amenities": ["Wifi", "Geyser", "Bed"],
   "price": 1000,
   "location": "string"
 }
@@ -179,6 +180,7 @@ Authorization: Bearer <access_token>
     "id": 1,
     "title": "...",
     "description": "...",
+    "amenities": ["Wifi", "Geyser", "Bed"],
     "price": 1000,
     "location": "...",
     "owner_id": 1
@@ -202,6 +204,7 @@ Authorization: Bearer <access_token>
       "id": 1,
       "title": "...",
       "price": 1000,
+      "amenities": ["Wifi", "Geyser", "Bed"],
       "location": "..."
     }
   ],
@@ -235,10 +238,11 @@ Authorization: Bearer <access_token>
   "success": true,
   "data": {
     "id": 1,
-    "title": "...",
-    "description": "...",
+    "title": "new title",
+    "description": "new description",
+    "amenities": ["Wifi", "Geyser", "Bed"],
     "price": 1200,
-    "location": "...",
+    "location": "new location",
     "owner_id": 1
   },
   "message": "Listing updated successfully"
