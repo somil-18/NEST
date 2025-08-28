@@ -419,6 +419,9 @@ class BookingCreate(Resource):
             end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
         except ValueError:
             return {"success": False, "message": "Invalid date format, use YYYY-MM-DD"}, 400
+        
+        if start_date_obj > end_date_obj:
+            return {"success": False, "message": "Start date cannot be after end date"}, 400
 
         listing = Listing.query.get(listing_id)
         if not listing:
@@ -431,7 +434,7 @@ class BookingCreate(Resource):
         # check if already booked for dates
         existing = Booking.query.filter(
             Booking.listing_id == listing_id,
-            Booking.status == "Confirmed",
+            Booking.status.in_(["Confirmed", "Pending"]),
             Booking.start_date <= end_date_obj,
             Booking.end_date >= start_date_obj
         ).first()
@@ -566,5 +569,4 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
-
 
