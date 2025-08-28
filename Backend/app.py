@@ -6,7 +6,7 @@ from flask_cors import CORS
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from config import Config
-from models import db, User, Listing
+from models import db, User, Listing, Booking
 from utils.email_utils import send_verification_email, confirm_email_token, send_password_reset_email, confirm_password_reset_token
 import re
 
@@ -32,6 +32,9 @@ CORS(app, resources={r"/*": {"origins": app.config['FRONTEND_URL']}}, supports_c
 def hello():
     return {"success": True, "message": "Hello"}, 200
 
+
+# ***********************************************************************************
+# AUTHENTICATION
 
 # email confirmation
 @app.route('/confirm/<token>')
@@ -66,7 +69,7 @@ class UserRegistration(Resource):
             return {"success": False, "message": "Missing fields"}, 400
         
         # validate roles
-        if role not in ["user", "owner"]:
+        if role.lower() not in ["user", "owner"]:
             return {"success": False, "message": "Invalid role"}, 400
         
         # validate email format
@@ -195,7 +198,7 @@ class ChangePassword(Resource):
             return {"success": False, "message": f"Database error: {str(e)}"}, 500
         
 
-# ********************************
+# ///////////////////////////////////////////////
 # forgot password
 class ForgotPassword(Resource):
     def post(self):
@@ -223,6 +226,10 @@ class ResetPassword(Resource):
 
         if not new_password:
             return {"success": False, "message": "New password is required"}, 400
+        
+        if not re.match(password_pattern, new_password):
+            return {"success": False,
+        "message": "Password must be at least 8 characters long, include uppercase, lowercase, number, and special character"}, 400
 
         email = confirm_password_reset_token(token)
         if not email:
@@ -237,7 +244,11 @@ class ResetPassword(Resource):
 
         return {"success": True, "message": "Password updated successfully"}, 200
     
-# ************************************
+# \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+
+# ***********************************************************************************
+# CRUD 
 
 # create listing
 class ListingCreate(Resource):
@@ -246,6 +257,7 @@ class ListingCreate(Resource):
         data = request.get_json()
         title = data.get("title")
         description = data.get("description")
+        amenities_list = data.get("amenities")
         price = data.get("price")
         location = data.get("location")
         user_id = int(get_jwt_identity())  # current user ID from token
@@ -253,7 +265,7 @@ class ListingCreate(Resource):
         if not title or not price or not location:
             return {"success": False, "message": "Missing required fields"}, 400
 
-        # Fetch user from database
+        # fetch user from database
         user = User.query.get(user_id)
         if not user:
             return {"success": False, "message": "User not found"}, 404
@@ -267,6 +279,7 @@ class ListingCreate(Resource):
             title=title,
             description=description,
             price=price,
+            amenities=amenities_list, 
             location=location,
             owner_id=user_id
         )
@@ -277,6 +290,7 @@ class ListingCreate(Resource):
             "id": listing.id,
             "title": listing.title,
             "description": listing.description,
+            "amenities": listing.amenities,
             "price": listing.price,
             "location": listing.location,
             "owner_id": listing.owner_id
@@ -290,7 +304,10 @@ class ListingCreate(Resource):
 class ListingList(Resource):
     def get(self):
         listings = Listing.query.all()
-        result = [{"id": l.id, "title": l.title, "description": l.description, "price": l.price, "location": l.location, "owner_id": l.owner_id} for l in listings]
+        result = [{"id": l.id, "title": l.title, "description": l.description,
+                    "amenities": l.amenities or [],
+                    "price": l.price, "location": l.location, "owner_id": l.owner_id} 
+                    for l in listings]
 
         return {"success": True, "data": result, "message": "Listings fetched successfully"}, 200
 
@@ -323,14 +340,17 @@ class ListingUpdate(Resource):
         data = request.get_json()
         listing.title = data.get("title", listing.title)
         listing.description = data.get("description", listing.description)
+        listing.amenities = data.get("amenities", listing.amenities)
         listing.price = data.get("price", listing.price)
         listing.location = data.get("location", listing.location)
+
         db.session.commit()
 
         updated_listing = {
             "id": listing.id,
             "title": listing.title,
             "description": listing.description,
+            "amenities": listing.amenities,
             "price": listing.price,
             "location": listing.location,
             "owner_id": listing.owner_id
@@ -346,30 +366,170 @@ class ListingDelete(Resource):
     def delete(self, listing_id):
         user_id = int(get_jwt_identity())
 
-        # Fetch user from DB
+        # fetch user from DB
         user = User.query.get(user_id)
         if not user:
             return {"success": False, "message": "User not found"}, 404
 
-        # Check role
+        # check role
         if user.role != "owner":
             return {"success": False, "message": "Only owners can delete listings"}, 403
 
-        # Fetch listing
+        # fetch listing
         listing = Listing.query.get(listing_id)
         if not listing:
             return {"success": False, "message": "Listing not found"}, 404
 
-        # Check ownership
+        # check ownership
         if listing.owner_id != user_id:
             return {"success": False, "message": "Unauthorized"}, 403
 
-        # Delete listing
+        # delete listing
         db.session.delete(listing)
         db.session.commit()
         
         return {"success": True, "data": listing_id, "message": "Listing deleted successfully"}, 200
+    
+# ********************************************************************************************
 
+
+# **********************************************************************************************
+# BOOKING
+
+from datetime import datetime
+from flask_jwt_extended import jwt_required, get_jwt_identity
+
+class BookingCreate(Resource):
+    @jwt_required()
+    def post(self):
+        user_id = int(get_jwt_identity())
+        data = request.get_json()
+        listing_id = data.get("listing_id")
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+
+        if not listing_id or not start_date or not end_date:
+            return {"success": False, "message": "Missing fields"}, 400
+        
+        # Convert string dates to Python date objects
+        try:
+            start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
+            end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except ValueError:
+            return {"success": False, "message": "Invalid date format, use YYYY-MM-DD"}, 400
+
+        listing = Listing.query.get(listing_id)
+        if not listing:
+            return {"success": False, "message": "Listing not found"}, 404
+
+        # check if already booked for dates
+        existing = Booking.query.filter(
+            Booking.listing_id == listing_id,
+            Booking.status == "Confirmed",
+            Booking.start_date <= end_date_obj,
+            Booking.end_date >= start_date_obj
+        ).first()
+        if existing:
+            return {"success": False, "message": "Already booked for selected dates"}, 400
+
+        # Save correct date objects in DB
+        booking = Booking(
+            user_id=user_id,
+            listing_id=listing_id,
+            start_date=start_date_obj,
+            end_date=end_date_obj,
+            status="Pending"
+        )
+        db.session.add(booking)
+        db.session.commit()
+
+        booking_data = {
+            "id": booking.id,
+            "listing_id": booking.listing_id,
+            "user_id": booking.user_id,
+            "start_date": booking.start_date.isoformat(),
+            "end_date": booking.end_date.isoformat(),
+            "status": booking.status
+        }
+
+        return {"success": True, "data": booking_data, "message": "Booking created, awaiting confirmation"}, 201
+
+
+class MyBookings(Resource):
+    @jwt_required()
+    def get(self):
+        user_id = int(get_jwt_identity())
+        bookings = Booking.query.filter_by(user_id=user_id).all()
+        result = [
+            {
+                "id": b.id,
+                "listing_id": b.listing_id,
+                "start_date": b.start_date.isoformat(),
+                "end_date": b.end_date.isoformat(),
+                "status": b.status
+            } for b in bookings
+        ]
+        return {"success": True, "data": result}, 200
+
+
+class OwnerBookings(Resource):
+    @jwt_required()
+    def get(self):
+        user_id = int(get_jwt_identity())
+        listings = Listing.query.filter_by(owner_id=user_id).all()
+        listing_ids = [l.id for l in listings]
+
+        bookings = Booking.query.filter(Booking.listing_id.in_(listing_ids)).all()
+        result = [
+            {
+                "id": b.id,
+                "listing_id": b.listing_id,
+                "start_date": b.start_date.isoformat(),
+                "end_date": b.end_date.isoformat(),
+                "status": b.status
+            } for b in bookings
+        ]
+        return {"success": True, "data": result}, 200
+
+
+class BookingUpdate(Resource):
+    @jwt_required()
+    def put(self, booking_id):
+        user_id = int(get_jwt_identity())
+        data = request.get_json()
+        status = data.get("status")  # "confirmed" or "cancelled"
+
+        booking = Booking.query.get(booking_id)
+        if not booking:
+            return {"success": False, "message": "Booking not found"}, 404
+        
+        if not status or status.lower() not in ["confirmed", "cancelled"]:
+            return {"success": False, "message": "Invalid status"}, 400
+
+        listing = Listing.query.get(booking.listing_id)
+        if listing.owner_id != user_id:
+            return {"success": False, "message": "Unauthorized"}, 403
+
+        booking.status = status.capitalize()
+        db.session.commit()
+        return {"success": True, "message": f"Booking {status}"}, 200
+
+
+class BookingCancel(Resource):
+    @jwt_required()
+    def delete(self, booking_id):
+        user_id = int(get_jwt_identity())
+        booking = Booking.query.get(booking_id)
+
+        if not booking or booking.user_id != user_id:
+            return {"success": False, "message": "Unauthorized or Booking not found"}, 403
+
+        db.session.delete(booking)
+        db.session.commit()
+        return {"success": True, "message": "Booking cancelled"}, 200
+
+
+# ********************************************************************************************
 
 
 # end points
@@ -380,11 +540,16 @@ api.add_resource(ChangePassword, "/change-password")
 api.add_resource(ForgotPassword, "/forgot-password")
 api.add_resource(ResetPassword, "/reset-password/<string:token>")
 
-
 api.add_resource(ListingCreate, "/listings/create")
 api.add_resource(ListingList, "/listings")
 api.add_resource(ListingUpdate, "/listings/<int:listing_id>")
 api.add_resource(ListingDelete, "/listings/<int:listing_id>")
+
+api.add_resource(BookingCreate, "/bookings/create")
+api.add_resource(MyBookings, "/bookings/my")
+api.add_resource(OwnerBookings, "/bookings/owner")
+api.add_resource(BookingUpdate, "/bookings/<int:booking_id>")
+api.add_resource(BookingCancel, "/bookings/<int:booking_id>/cancel")
 
 
 # run app
