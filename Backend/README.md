@@ -310,7 +310,7 @@ Authorization: Bearer <access_token>
 ### 2. My bookings (User)
 
 **Endpoint:** `GET /bookings/my`  
-**Description:**Returns all bookings by this tenant with status info.
+**Description:** Returns all bookings by this tenant with status info.
 
 **Response:**
 ```json
