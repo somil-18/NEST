@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React from "react";
 import { Link } from "react-router-dom";
 import {
@@ -12,48 +13,15 @@ import {
 import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
 import { colors } from "@/utils/colors";
+import { footerLinks, socialLinks } from "./navUtils";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
 
-  const footerLinks = {
-    company: [
-      { label: "About Us", to: "/about" },
-      { label: "Our Mission", to: "/mission" },
-      { label: "Careers", to: "/careers" },
-      { label: "Press", to: "/press" },
-    ],
-    services: [
-      { label: "For Tenants", to: "/tenants" },
-      { label: "For Owners", to: "/owners" },
-      { label: "Property Management", to: "/property-management" },
-      { label: "Pricing", to: "/pricing" },
-    ],
-    support: [
-      { label: "Help Center", to: "/help" },
-      { label: "Contact Us", to: "/contact" },
-      { label: "FAQs", to: "/faqs" },
-      { label: "Safety Guidelines", to: "/safety" },
-    ],
-    legal: [
-      { label: "Privacy Policy", to: "/privacy" },
-      { label: "Terms of Service", to: "/terms" },
-      { label: "Cookie Policy", to: "/cookies" },
-      { label: "Refund Policy", to: "/refunds" },
-    ],
-  };
-
-  const socialLinks = [
-    { icon: <Facebook size={20} />, to: "#", label: "Facebook" },
-    { icon: <Twitter size={20} />, to: "#", label: "Twitter" },
-    { icon: <Instagram size={20} />, to: "#", label: "Instagram" },
-    { icon: <Linkedin size={20} />, to: "#", label: "LinkedIn" },
-  ];
-
   return (
     <footer
       className="bg-white border-t"
-      style={{ borderColor: colors.lightBlack }}
+      style={{ borderColor: colors.border }}
     >
       <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Main Footer Content */}
@@ -69,12 +37,15 @@ export default function Footer() {
               />
               <span
                 className="text-xl font-bold"
-                style={{ color: colors.black }}
+                style={{ color: colors.dark }}
               >
                 Nest
               </span>
             </div>
-            <p className="text-muted-foreground text-sm leading-relaxed">
+            <p
+              className="text-sm leading-relaxed"
+              style={{ color: colors.muted }}
+            >
               Find your perfect PG accommodation with ease. We connect tenants
               with verified property owners for safe, comfortable, and
               affordable living spaces.
@@ -82,26 +53,49 @@ export default function Footer() {
 
             {/* Contact Info */}
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Mail size={16} style={{ color: colors.red }} />
+              <div
+                className="flex items-center gap-2 text-sm"
+                style={{ color: colors.muted }}
+              >
+                <Mail size={16} style={{ color: colors.primary }} />
                 <Link
                   to="mailto:support@nest.com"
-                  className="hover:text-primary transition-colors"
+                  className="transition-colors"
+                  style={{ color: colors.muted }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = colors.primary)
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = colors.muted)
+                  }
                 >
                   support@nest.com
                 </Link>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Phone size={16} style={{ color: colors.blue }} />
+              <div
+                className="flex items-center gap-2 text-sm"
+                style={{ color: colors.muted }}
+              >
+                <Phone size={16} style={{ color: colors.primary }} />
                 <Link
                   to="tel:+919876543210"
-                  className="hover:text-primary transition-colors"
+                  className="transition-colors"
+                  style={{ color: colors.muted }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = colors.primary)
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = colors.muted)
+                  }
                 >
                   +91 98765 43210
                 </Link>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin size={16} style={{ color: colors.black }} />
+              <div
+                className="flex items-center gap-2 text-sm"
+                style={{ color: colors.muted }}
+              >
+                <MapPin size={16} style={{ color: colors.secondary }} />
                 <span>Mumbai, Maharashtra, India</span>
               </div>
             </div>
@@ -111,7 +105,7 @@ export default function Footer() {
           <div className="space-y-4">
             <h3
               className="font-semibold text-sm uppercase tracking-wider"
-              style={{ color: colors.black }}
+              style={{ color: colors.dark }}
             >
               Company
             </h3>
@@ -120,7 +114,14 @@ export default function Footer() {
                 <Link
                   key={label}
                   to={to}
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                  className="text-sm transition-colors"
+                  style={{ color: colors.muted }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = colors.primary)
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = colors.muted)
+                  }
                 >
                   {label}
                 </Link>
@@ -132,7 +133,7 @@ export default function Footer() {
           <div className="space-y-4">
             <h3
               className="font-semibold text-sm uppercase tracking-wider"
-              style={{ color: colors.black }}
+              style={{ color: colors.dark }}
             >
               Services
             </h3>
@@ -141,7 +142,14 @@ export default function Footer() {
                 <Link
                   key={label}
                   to={to}
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                  className="text-sm transition-colors"
+                  style={{ color: colors.muted }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = colors.accent)
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = colors.muted)
+                  }
                 >
                   {label}
                 </Link>
@@ -153,7 +161,7 @@ export default function Footer() {
           <div className="space-y-4">
             <h3
               className="font-semibold text-sm uppercase tracking-wider"
-              style={{ color: colors.black }}
+              style={{ color: colors.dark }}
             >
               Support
             </h3>
@@ -162,7 +170,14 @@ export default function Footer() {
                 <Link
                   key={label}
                   to={to}
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                  className="text-sm transition-colors"
+                  style={{ color: colors.muted }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = colors.primary)
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = colors.muted)
+                  }
                 >
                   {label}
                 </Link>
@@ -174,7 +189,7 @@ export default function Footer() {
           <div className="space-y-4">
             <h3
               className="font-semibold text-sm uppercase tracking-wider"
-              style={{ color: colors.black }}
+              style={{ color: colors.dark }}
             >
               Legal
             </h3>
@@ -183,7 +198,14 @@ export default function Footer() {
                 <Link
                   key={label}
                   to={to}
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                  className="text-sm transition-colors"
+                  style={{ color: colors.muted }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = colors.secondary)
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = colors.muted)
+                  }
                 >
                   {label}
                 </Link>
@@ -193,27 +215,37 @@ export default function Footer() {
         </div>
 
         {/* Divider */}
-        <Separator className="my-8" />
+        <Separator
+          className="my-8"
+          style={{ backgroundColor: colors.border }}
+        />
 
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           {/* Copyright */}
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm" style={{ color: colors.muted }}>
             © {currentYear} Nest. All rights reserved.
           </p>
 
           {/* Social Links */}
           <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground mr-2">
+            <span className="text-sm mr-2" style={{ color: colors.muted }}>
               Follow us:
             </span>
             <div className="flex gap-2">
-              {socialLinks.map(({ icon, to, label }) => (
+              {socialLinks.map(({ icon: Icon, to, label }) => (
                 <Button
                   key={label}
                   variant="ghost"
                   size="sm"
                   asChild
-                  className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+                  className="h-8 w-8 p-0 transition-colors"
+                  style={{ color: colors.muted }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = colors.primary)
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = colors.muted)
+                  }
                 >
                   <a
                     href={to}
@@ -221,7 +253,7 @@ export default function Footer() {
                     rel="noopener noreferrer"
                     aria-label={label}
                   >
-                    {icon}
+                    <Icon size={20} />
                   </a>
                 </Button>
               ))}

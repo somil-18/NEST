@@ -8,14 +8,9 @@ import {
   SheetHeader,
   SheetTitle,
   SheetClose,
-} from "../ui/sheet"; // Adjust the import path as needed
+} from "../ui/sheet";
 import { Button } from "../ui/button";
-
-const colors = {
-  red: "#d64933",
-  black: "#2b303a",
-  blue: "#58a4b0",
-};
+import { colors } from "@/utils/colors"; // Updated to import from utils
 
 const navLinks = [
   { to: "/about", label: "About", icon: <Info size={16} /> },
@@ -25,18 +20,18 @@ const navLinks = [
 
 export default function Navbar() {
   return (
-    <nav className="sticky top-0 z-50 w-full bg-white border-b border-gray-200">
+    <nav className="sticky top-0 z-50 w-full bg-white border-b" style={{ borderColor: colors.border }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo and Name */}
           <NavLink to="/" className="flex items-center gap-2 select-none">
             <img
               src="https://imgs.search.brave.com/W3e7ENketSFhHPpNSOwXwdr-myxvrhIRfI6pWTHdAGk/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9sb2dv/LmNvbS9pbWFnZS1j/ZG4vaW1hZ2VzL2t0/czkyOHBkL3Byb2R1/Y3Rpb24vZDlkYTk3/NzliZjNhYjJhZjBi/NTBhMDY1Yjc4Yzg2/OWE0NjA3YWRmNC03/MjB4NzIwLndlYnA_/dz01MTImcT03MiZm/bT13ZWJw"
-              alt="Logo"
+              alt="Nest Logo"
               className="h-12 w-12 object-contain"
               draggable={false}
             />
-            <span className="text-xl font-bold" style={{ color: colors.black }}>
+            <span className="text-xl font-bold" style={{ color: colors.dark }}>
               Nest
             </span>
           </NavLink>
@@ -50,10 +45,26 @@ export default function Navbar() {
                 className={({ isActive }) =>
                   `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
                     isActive
-                      ? "text-red-600 bg-red-50"
-                      : "text-gray-700 hover:bg-red-100 hover:text-red-600"
+                      ? ""
+                      : ""
                   }`
                 }
+                style={({ isActive }) => ({
+                  color: isActive ? colors.primary : colors.muted,
+                  backgroundColor: isActive ? colors.lightPrimary : "transparent"
+                })}
+                onMouseEnter={(e) => {
+                  if (!e.currentTarget.getAttribute('aria-current')) {
+                    e.currentTarget.style.color = colors.primary;
+                    e.currentTarget.style.backgroundColor = colors.lightPrimary;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!e.currentTarget.getAttribute('aria-current')) {
+                    e.currentTarget.style.color = colors.muted;
+                    e.currentTarget.style.backgroundColor = "transparent";
+                  }
+                }}
               >
                 {React.cloneElement(icon, { className: "stroke-current" })}
                 {label}
@@ -62,12 +73,12 @@ export default function Navbar() {
             <NavLink to="/login">
               <Button
                 className="flex items-center gap-2 px-4 py-2 ml-4 rounded-md text-white font-semibold transition-colors duration-200"
-                style={{ backgroundColor: colors.red, fontSize: 14 }}
+                style={{ backgroundColor: colors.primary, fontSize: 14 }}
                 onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor = colors.blue)
+                  (e.currentTarget.style.backgroundColor = colors.accent)
                 }
                 onMouseLeave={(e) =>
-                  (e.currentTarget.style.backgroundColor = colors.red)
+                  (e.currentTarget.style.backgroundColor = colors.primary)
                 }
               >
                 <User size={16} />
@@ -82,21 +93,24 @@ export default function Navbar() {
               <SheetTrigger asChild>
                 <button
                   aria-label="Open menu"
-                  className="inline-flex items-center justify-center rounded-md p-2 text-gray-700 hover:text-red-600 focus:outline-none"
+                  className="inline-flex items-center justify-center rounded-md p-2 transition-colors focus:outline-none"
+                  style={{ color: colors.muted }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = colors.primary)}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = colors.muted)}
                 >
                   <Menu size={28} />
                 </button>
               </SheetTrigger>
               <SheetContent side="right" className="w-80 p-4 [&>button]:hidden">
-                <SheetHeader className={"p-0"}>
+                <SheetHeader className="p-0">
                   <SheetTitle
                     className="flex items-center gap-2 text-xl font-bold"
-                    style={{ color: colors.black }}
+                    style={{ color: colors.dark }}
                   >
                     <div className="flex items-center">
                       <img
                         src="https://imgs.search.brave.com/W3e7ENketSFhHPpNSOwXwdr-myxvrhIRfI6pWTHdAGk/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9sb2dv/LmNvbS9pbWFnZS1j/ZG4vaW1hZ2VzL2t0/czkyOHBkL3Byb2R1/Y3Rpb24vZDlkYTk3/NzliZjNhYjJhZjBi/NTBhMDY1Yjc4Yzg2/OWE0NjA3YWRmNC03/MjB4NzIwLndlYnA_/dz01MTImcT03MiZm/bT13ZWJw"
-                        alt="Logo"
+                        alt="Nest Logo"
                         className="h-14 w-14 object-contain"
                       />
                       Nest
@@ -104,7 +118,10 @@ export default function Navbar() {
                     <SheetClose asChild>
                       <button
                         aria-label="Close menu"
-                        className="absolute top-7 right-4 rounded-md p-1 hover:text-red-600 focus:outline-none"
+                        className="absolute top-7 right-4 rounded-md p-1 transition-colors focus:outline-none"
+                        style={{ color: colors.muted }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = colors.primary)}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = colors.muted)}
                       >
                         <X size={24} />
                       </button>
@@ -116,16 +133,22 @@ export default function Navbar() {
                     <NavLink
                       key={label}
                       to={to}
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 ${
-                          isActive
-                            ? "bg-red-50 text-red-600"
-                            : "text-gray-700 hover:bg-red-100 hover:text-red-600"
-                        }`
-                      }
-                      onClick={() => {
-                        // Sheet will auto-close on navigation if you set up sheet state correctly.
-                        // Here it will close by default since the SheetClose is present.
+                      className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
+                      style={({ isActive }) => ({
+                        color: isActive ? colors.primary : colors.muted,
+                        backgroundColor: isActive ? colors.lightPrimary : "transparent"
+                      })}
+                      onMouseEnter={(e) => {
+                        if (!e.currentTarget.getAttribute('aria-current')) {
+                          e.currentTarget.style.color = colors.primary;
+                          e.currentTarget.style.backgroundColor = colors.lightPrimary;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!e.currentTarget.getAttribute('aria-current')) {
+                          e.currentTarget.style.color = colors.muted;
+                          e.currentTarget.style.backgroundColor = "transparent";
+                        }
                       }}
                     >
                       {React.cloneElement(icon, {
@@ -138,13 +161,13 @@ export default function Navbar() {
                 <div className="mt-8">
                   <NavLink to="/login">
                     <Button
-                      className="flex w-full items-center justify-center gap-2 rounded-md bg-red-600 py-2 text-white font-semibold transition-colors duration-200 hover:bg-blue-600"
-                      style={{ fontSize: 16, backgroundColor: colors.red }}
+                      className="flex w-full items-center justify-center gap-2 rounded-md py-2 text-white font-semibold transition-colors duration-200"
+                      style={{ fontSize: 16, backgroundColor: colors.primary }}
                       onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor = colors.blue)
+                        (e.currentTarget.style.backgroundColor = colors.accent)
                       }
                       onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor = colors.red)
+                        (e.currentTarget.style.backgroundColor = colors.primary)
                       }
                     >
                       <User size={20} />

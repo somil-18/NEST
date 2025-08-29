@@ -4,8 +4,6 @@ import "./index.css";
 import App from "./App.jsx";
 import axios from "axios";
 import { BrowserRouter } from "react-router-dom";
-import Navbar from "./components/navigation/Navbar";
-import Footer from "./components/navigation/Footer";
 
 const token = localStorage.getItem("token");
 axios.interceptors.request.use(
@@ -23,9 +21,7 @@ axios.interceptors.request.use(
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
-      <Navbar />
       <App />
-      <Footer />
     </BrowserRouter>
   </StrictMode>
 );
