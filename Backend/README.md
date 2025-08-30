@@ -150,6 +150,107 @@ Authorization: Bearer <access_token>
 ```
 
 ---
+### 7. Fetch user profile
+
+**Endpoint:** `GET /profile`  
+**Description:** Fetches the complete profile info. for currety aunthenticated user.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+```json
+{
+    "success": true,
+    "data": {
+        "username": "testuser",
+        "email": "test@example.com",
+        "role": "user",
+        "bio": "Software developer from Mumbai.",
+        "mobile_no": "9876543210",
+        "address": "123 Marine Drive, Mumbai, India",
+        "gender": "Male",
+        "age": 28
+    }
+}
+```
+
+**Error**
+```json
+{
+    "success": false,
+    "message": "User not found"
+}
+```
+---
+
+### 8. Update user profile
+
+**Endpoint:** `PATCH /profile`  
+**Description:** Updates one or more fields of the user's profile. 
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body (JSON):**
+```json
+{
+    "username": "new_username", // unique
+    "bio": "Updated bio.",
+    "mobile_no": "9988776655", // 10 digit, start from 6-9
+    "address": "New Address, Pune",
+    "gender": "Female", // male or female
+    "age": 30 // betweem 18-100
+}
+```
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Profile updated successfully"
+}
+```
+
+**Error**
+```json
+{
+    "success": false,
+    "message": "Invalid mobile number format"
+}
+```
+---
+
+### 8. Delete user profile
+
+**Endpoint:** `DELETE /profile`  
+**Description:** Permanently deletes the user's account and all associated data (listings, bookings). This action also immediately invalidates the user's current access token, logging them out securely. 
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Account deleted. You have been logged out."
+}
+```
+
+**Error**
+```json
+{
+    "success": false,
+    "message": "User not found"
+}
+```
+---
 
 ## Listings Endpoints
 
@@ -433,9 +534,9 @@ Once verified, the user can log in.
 
 ### User Table
 
-| Column      | Type         | Constraints                     |
-|-------------|--------------|----------------------------------|
-| id          | Integer       | Primary Key                      |
+| Column      | Type          | Constraints                       |
+|-------------|---------------|-----------------------------------|
+| id          | Integer       | Primary Key                       |
 | username    | String(50)    | Unique, Not Null                  |
 | email       | String(254)   | Unique, Not Null                  |
 | password    | String(200)   | Not Null                          |
@@ -444,29 +545,41 @@ Once verified, the user can log in.
 
 ### Listing Table
 
-| Column      | Type         | Constraints                           |
-|-------------|--------------|---------------------------------------|
+| Column      | Type          | Constraints                           |
+|-------------|---------------|---------------------------------------|
 | id          | Integer       | Primary Key                           |
 | title       | String(200)   | Not Null                              |
 | description | Text          | Nullable                              |
 | price       | Float         | Not Null                              |
 | location    | String(200)   | Not Null                              |
-| owner_id    | Integer       | Foreign Key to User.id, Not Null       |
+| owner_id    | Integer       | Foreign Key to User.id, Not Null      |
 
 ### Booking Table
 
-| Column      | Type         | Constraints                           |
-|-------------|--------------|---------------------------------------|
-| id          | Integer       | Primary Key                           |
-| user_id       | Integer   | Foreign key → User.id                           |
-| listing_id | Integer        | Foreign key → Listing.id                           |
-| start_date     | Date         | Booking start date                            |
-| end_date   | Date   | Booking end date                             |
-| status   | String(20)    | Pending/Confirmed/Cancelled     |
-| created_at   | DateTime | Auto timestamp       |
+| Column      | Type        | Constraints                      |
+|-------------|-------------|----------------------------------|
+| id          | Integer     | Primary Key, Auto-incrementing   |
+| user_id     | Integer     | Foreign key → User.id            |
+| listing_id  | Integer     | Foreign key → Listing.id         |
+| start_date  | Date        | Booking start date               |
+| end_date    | Date        | Booking end date                 |
+| status      | String(20)  | Pending/Confirmed/Cancelled      |
+| created_at  | DateTime    | Auto timestamp                   |
+
+### TokenBlockList Table
+
+| Column      | Type          | Constraints                                |
+|-------------|---------------|--------------------------------------------|
+| id          | Integer       | Primary Key, Auto-incrementing             |
+| jti         | String(36)    | JWT's Unique ID, Indexed for fast lookups  |
+| created_at  | DateTime      | Auto timestamp of when the token was added |
+
 
 **Relationships:**  
-- Each `Listing` belongs to a `User` (owner).  
-- A `User` can have multiple `Listings`.  
-
+- Each `Listing` belongs to a `Owner`.  
+- A `Owner` can have multiple `Listings`.  
+- Each Booking must belong to one `User`.
+- Each Booking must be for one Listing.
+- A `User` can have multiple Bookings.
+- A Listing can have multiple Bookings.
 ---
