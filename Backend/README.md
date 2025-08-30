@@ -408,7 +408,8 @@ Authorization: Bearer <access_token>
 **Error**
 ```json
 {
-  "success": False, "message": "Already booked for selected dates"
+  "success": false,
+  "message": "Already booked for selected dates"
 } 
 ```
 ---
