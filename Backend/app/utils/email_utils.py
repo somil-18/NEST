@@ -2,6 +2,7 @@ from flask import url_for, current_app
 from flask_mail import Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired
 
+
 def send_verification_email(mail, email):
     s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
     token = s.dumps(email, salt='email-confirm')
@@ -41,4 +42,5 @@ def confirm_password_reset_token(token, expiration=3600):
         email = s.loads(token, salt='password-reset', max_age=expiration)
     except SignatureExpired:
         return None
+
     return email
