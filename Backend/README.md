@@ -225,7 +225,7 @@ Authorization: Bearer <access_token>
 ```
 ---
 
-### 8. Delete user profile
+### 9. Delete user profile
 
 **Endpoint:** `DELETE /profile`  
 **Description:** Permanently deletes the user's account and all associated data (listings, bookings). This action also immediately invalidates the user's current access token, logging them out securely. 
@@ -405,7 +405,12 @@ Authorization: Bearer <access_token>
   }
 }
 ```
-
+**Error**
+```json
+{
+  "success": False, "message": "Already booked for selected dates"
+} 
+```
 ---
 
 ### 2. My bookings (User)
@@ -478,7 +483,7 @@ Authorization: Bearer <access_token>
 **Request Body (JSON):**
 ```json
 {
-  "status": "Confirmed"
+  "status": "Confirmed" // confirmed or cancelled
 }
 ```
 
