@@ -8,6 +8,9 @@ import Contact from "./pages/public/Contact";
 import Listings from "./pages/public/Listings";
 import ListingDetail from "./pages/public/ListingDetail";
 import NotFoundPage from "./pages/public/NotFound";
+import EmailVerification from "./pages/verification/EmailVerification";
+import ResetPassword from "./pages/forgot_password/ForgotPassword";
+import ForgotPassword from "./pages/forgot_password/ForgotPassword";
 
 const App = () => {
   return (
@@ -21,6 +24,8 @@ const App = () => {
         <Route path="listings" element={<Listings />} />
         <Route path="listings/:id" element={<ListingDetail />} />
         <Route path="contact" element={<Contact />} />
+        <Route path="verify-email/:token" element={<EmailVerification />} />
+        <Route path="forgot-password/:token" element={<ForgotPassword />} />
       </Route>
     </Routes>
   );
