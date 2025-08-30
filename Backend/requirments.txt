@@ -7,3 +7,4 @@ Flask-Cors
 argon2-cffi
 python-dotenv
 PyMySQL
+cloudinary
