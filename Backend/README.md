@@ -62,7 +62,7 @@ http://localhost:5000
 ### 3. Refresh Token
 
 **Endpoint:** `POST /refresh`  
-**Description:** Get a new access token using the refresh token.
+**Description:** Get a new access token using the refresh token so the user don't have to login again and again
 
 **Headers:**
 ```
