@@ -28,6 +28,7 @@ class Listing(db.Model):
     amenities = db.Column(JSON)
     price = db.Column(db.Float, nullable=False, index=True)
     location = db.Column(db.String(200), nullable=False, index=True)
+    image_urls = db.Column(db.JSON, nullable=True)
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
 
     bookings = db.relationship('Booking', backref='listing', lazy=True, cascade="all, delete-orphan")
@@ -51,3 +52,4 @@ class TokenBlocklist(db.Model):
     jti = db.Column(db.String(36), nullable=False, index=True)
 
     created_at = db.Column(db.DateTime, nullable=False)
+
