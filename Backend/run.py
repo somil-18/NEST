@@ -1,9 +1,10 @@
 from dotenv import load_dotenv
-from app import create_app, db
 
 
-# load environment variables from .env file
 load_dotenv()
+
+
+from app import create_app, db
 
 
 app = create_app()
