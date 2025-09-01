@@ -1,213 +1,265 @@
+# --- Cleaned up and consolidated imports ---
+import os
+import json
+from datetime import date
 from flask import request, Blueprint
 from flask_restful import Api, Resource
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from ..extensions import db
-from ..models import User, Listing, Booking
+from sqlalchemy import or_, cast, String, func
+from sqlalchemy.orm.attributes import flag_modified  # <-- FIXED IMPORT
 import cloudinary.uploader
-from sqlalchemy.orm.attributes import flag_modified
-from sqlalchemy import or_, cast, String
-from flask import request
-from datetime import date
 
+from ..extensions import db
+from ..models import User, Listing, Booking, Review
 
 listings_bp = Blueprint('listings', __name__)
 api = Api(listings_bp)
 
+# --- Helper Functions ---
+def serialize_owner(owner):
+    if not owner: return None
+    return {
+        "id": owner.id, "username": owner.username, "mobile_no": owner.mobile_no,
+        "gender": owner.gender, "age": owner.age
+    }
 
-# create listings (owner)
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
 class ListingCreate(Resource):
     @jwt_required()
     def post(self):
-        data = request.get_json()
         user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
 
-        # validations
         if not user or user.role.lower() != "owner":
-            return {"success": False, "message": "Unauthorized"}, 403
+            return {"success": False, "message": "Unauthorized: Only owners can create listings"}, 403
 
-        if not data.get("title") or not data.get("price") or not data.get("location"):
-            return {"success": False, "message": "Missing required fields"}, 400
+        # Data validation
+        if 'data' not in request.form:
+            return {"success": False, "message": "Missing 'data' field in form"}, 400
+        try:
+            data = json.loads(request.form['data'])
+        except json.JSONDecodeError:
+            return {"success": False, "message": "Invalid JSON format in 'data' field"}, 400
 
+        required_fields = [
+            'title', 'street_address', 'city', 'state', 'pincode', 'propertyType',
+            'monthlyRent', 'securityDeposit', 'bedrooms', 'bathrooms', 'seating', 'amenities'
+        ]
+        if not all(field in data for field in required_fields):
+            return {"success": False, "message": "Missing required fields in 'data' JSON"}, 400
+
+        # Image validation 
+        if 'images' not in request.files:
+            return {"success": False, "message": "No images part in the request. At least one image is required."}, 400
+
+        files = request.files.getlist('images')
+
+        if not files or files[0].filename == '':
+            return {"success": False, "message": "No files selected. At least one image is required."}, 400
+
+        uploaded_urls = []
+        for file in files:
+            if not allowed_file(file.filename):
+                return {"success": False, "message": f"Invalid file type: {file.filename}. Please upload only images."}, 400
+            try:
+                upload_result = cloudinary.uploader.upload(file)
+                uploaded_urls.append(upload_result['secure_url'])
+            except Exception as e:
+                return {"success": False, "message": f"Image upload failed: {str(e)}"}, 500
+        
+        # Create and save listings
         listing = Listing(
-            title=data.get("title"), description=data.get("description"),
-            price=data.get("price"), amenities=data.get("amenities"),
-            location=data.get("location"), owner_id=user_id
+            owner_id=user_id, image_urls=uploaded_urls, **data
         )
+        
         db.session.add(listing)
         db.session.commit()
+        
+        # --- THIS IS THE FIX ---
+        # Create a simple, clean dictionary to send in the response.
+        listing_data = {
+            "id": listing.id,
+            "title": listing.title,
+            "monthlyRent": listing.monthlyRent,
+            "city": listing.city,
+            "state": listing.state
+        }
+        
+        # Use the clean dictionary in the return statement.
+        return {"success": True, "data": listing_data, "message": "Listing created successfully"}, 201
 
-        return {"success": True, "data": listing.id, "message": "Listing created successfully"}, 201
-
-
-# view listings (public)
 class ListingList(Resource):
     def get(self):
-        # get today's date to check for current bookings
         today = date.today()
-
-        # find the IDs of all listings that are currently booked (today's date)
-        active_bookings = Booking.query.filter(
-            Booking.start_date <= today,
-            Booking.end_date >= today,
-            Booking.status.in_(['Confirmed', 'Pending'])
-        ).with_entities(Booking.listing_id).all()
-
-        # convert the list of tuples [(1,), (5,)] into a simple set {1, 5} for fast lookups.
-        booked_listing_ids = {booking[0] for booking in active_bookings}
-
         listings = Listing.query.all()
-
         result = []
+
         for l in listings:
-            # status for each listing
-            if l.id in booked_listing_ids:
-                status = "Booked"
-            else:
-                status = "Available"
+            total_attendees_today = db.session.query(func.sum(Booking.attendees)).filter(
+                Booking.listing_id == l.id,
+                Booking.appointment_date == today,
+                Booking.status.in_(['Confirmed', 'Pending'])
+            ).scalar() or 0
+            
+            status = "Booked" if l.seating is not None and total_attendees_today >= l.seating else "Available"
             
             listing_data = {
                 "id": l.id, "title": l.title, "description": l.description,
-                "amenities": l.amenities or [], "price": l.price,
-                "location": l.location, "owner_id": l.owner_id,
-                "image_urls": l.image_urls or [],
+                "street_address": l.street_address, "city": l.city, "state": l.state, "pincode": l.pincode,
+                "propertyType": l.propertyType, "monthlyRent": l.monthlyRent, "securityDeposit": l.securityDeposit,
+                "bedrooms": l.bedrooms, "bathrooms": l.bathrooms, "seating": l.seating,
+                "area": l.area, "furnishing": l.furnishing, "amenities": l.amenities or [],
+                "image_urls": l.image_urls or [], "owner": serialize_owner(l.owner),
                 "availability_status": status
             }
             result.append(listing_data)
+            
+        # --- IMPROVEMENT: Removed message for consistency ---
+        return {"success": True, "data": result}
 
-        return {"success": True, "data": result}, 200
 
-
-# update listings (owner)
 class ListingResource(Resource):
+    def get(self, listing_id):
+        listing = Listing.query.get_or_404(listing_id, description="Listing not found")
+        listing_data = {
+            "id": listing.id, "title": listing.title, "description": listing.description,
+            "street_address": listing.street_address, "city": listing.city, "state": listing.state, "pincode": listing.pincode,
+            "propertyType": listing.propertyType, "monthlyRent": listing.monthlyRent, "securityDeposit": listing.securityDeposit,
+            "bedrooms": listing.bedrooms, "bathrooms": listing.bathrooms, "seating": listing.seating,
+            "area": listing.area, "furnishing": listing.furnishing, "amenities": listing.amenities or [],
+            "image_urls": listing.image_urls or [], "owner": serialize_owner(listing.owner)
+        }
+        reviews_data = [{"id": r.id, "author_username": r.author.username, "rating": r.rating, 
+                        "comment": r.comment, "created_at": r.created_at.isoformat()} for r in listing.reviews]
+        listing_data["reviews"] = reviews_data
+        return {"success": True, "data": listing_data}
+    
     @jwt_required()
     def patch(self, listing_id):
         user_id = int(get_jwt_identity())
         listing = Listing.query.get_or_404(listing_id, description="Listing not found")
-        
-        if listing.owner_id != user_id:
-            return {"success": False, "message": "Unauthorized"}, 403
-
+        if listing.owner_id != user_id: return {"success": False, "message": "Unauthorized"}, 403
         data = request.get_json()
-        listing.title = data.get("title", listing.title)
-        listing.description = data.get("description", listing.description)
-        listing.amenities = data.get("amenities", listing.amenities)
-        listing.price = data.get("price", listing.price)
-        listing.location = data.get("location", listing.location)
+        for field in ['title', 'description', 'street_address', 'city', 'state', 'pincode', 'propertyType', 
+        'monthlyRent', 'securityDeposit', 'bedrooms', 'bathrooms', 'seating', 'area', 
+        'furnishing', 'amenities']:
+            if field in data:
+                setattr(listing, field, data[field])
         db.session.commit()
-        return {"success": True, "message": "Listing updated successfully"}, 200
+        return self.get(listing_id)
 
-    # delete listings (owner)
     @jwt_required()
     def delete(self, listing_id):
         user_id = int(get_jwt_identity())
         listing = Listing.query.get_or_404(listing_id, description="Listing not found")
-        
-        if listing.owner_id != user_id:
-            return {"success": False, "message": "Unauthorized"}, 403
-
+        if listing.owner_id != user_id: return {"success": False, "message": "Unauthorized"}, 403
         db.session.delete(listing)
         db.session.commit()
-        return {"success": True, "message": "Listing deleted successfully"}, 200
-    
+        return '', 204
 
-# upload images
+
 class ListingImageUpload(Resource):
     @jwt_required()
     def post(self, listing_id):
         user_id = int(get_jwt_identity())
         listing = Listing.query.get_or_404(listing_id, description="Listing not found")
-
-        # validations
-        if listing.owner_id != user_id:
-            return {"success": False, "message": "Unauthorized"}, 403
-
-        if 'images' not in request.files:
-            return {"success": False, "message": "No 'images' key found in the form-data"}, 400
-
+        if listing.owner_id != user_id: return {"success": False, "message": "Unauthorized"}, 403
+        if 'images' not in request.files: return {"success": False, "message": "No 'images' key found"}, 400
         files = request.files.getlist('images')
-        
-        if not files or files[0].filename == '':
-            return {"success": False, "message": "No files selected for upload"}, 400
+        if not files or files[0].filename == '': return {"success": False, "message": "No files selected"}, 400
 
         uploaded_urls = []
         try:
             for file in files:
+                # --- ADDED: Consistent security validation ---
+                if not allowed_file(file.filename):
+                    return {"success": False, "message": f"Invalid file type: {file.filename}."}, 400
                 upload_result = cloudinary.uploader.upload(file)
                 uploaded_urls.append(upload_result['secure_url'])
         except Exception as e:
-            return {"success": False, "message": f"Image upload to Cloudinary failed: {str(e)}"}, 500
+            return {"success": False, "message": f"Image upload failed: {str(e)}"}, 500
 
-        if listing.image_urls is None:
-            listing.image_urls = []
-        
+        if listing.image_urls is None: listing.image_urls = []
         listing.image_urls.extend(uploaded_urls)
-        
         flag_modified(listing, "image_urls")
-        
         db.session.commit()
+        return {"success": True, "message": "Images added successfully", "image_urls": uploaded_urls}, 201
 
-        return {"success": True, "message": "Images uploaded successfully", "image_urls": uploaded_urls}, 201
 
-
-# search & filters
 class ListingSearch(Resource):
     def get(self):
         query = Listing.query
-
-        # location, price, keyword
         location = request.args.get('location')
         if location:
-            query = query.filter(Listing.location.ilike(f'%{location}%'))
-
-        min_price = request.args.get('min_price', type=float)
-        if min_price is not None:
-            query = query.filter(Listing.price >= min_price)
-        
-        max_price = request.args.get('max_price', type=float)
-        if max_price is not None:
-            query = query.filter(Listing.price <= max_price)
-
+            query = query.filter(or_(
+                Listing.city.ilike(f'%{location}%'), Listing.state.ilike(f'%{location}%'),
+                Listing.pincode.ilike(f'%{location}%'), Listing.street_address.ilike(f'%{location}%')
+            ))
+        min_rent = request.args.get('min_rent', type=float)
+        if min_rent is not None: query = query.filter(Listing.monthlyRent >= min_rent)
+        max_rent = request.args.get('max_rent', type=float)
+        if max_rent is not None: query = query.filter(Listing.monthlyRent <= max_rent)
         keyword = request.args.get('keyword')
-        if keyword:
-            query = query.filter(
-                or_(
-                    Listing.title.ilike(f'%{keyword}%'),
-                    Listing.description.ilike(f'%{keyword}%')
-                )
-            )
-
-        # amenities
+        if keyword: query = query.filter(or_(Listing.title.ilike(f'%{keyword}%'), Listing.description.ilike(f'%{keyword}%')))
         amenities_str = request.args.get('amenities')
         if amenities_str:
             required_amenities = [amenity.strip() for amenity in amenities_str.split(',')]
-            
             for amenity in required_amenities:
                 search_pattern = f'%"{amenity}"%'
                 query = query.filter(cast(Listing.amenities, String).ilike(search_pattern))
-
-        # sorting in ascending and descending
         sort_by = request.args.get('sort_by')
-        if sort_by == 'price_asc':
-            query = query.order_by(Listing.price.asc())
-        elif sort_by == 'price_desc':
-            query = query.order_by(Listing.price.desc())
-
+        if sort_by == 'rent_asc': query = query.order_by(Listing.monthlyRent.asc())
+        elif sort_by == 'rent_desc': query = query.order_by(Listing.monthlyRent.desc())
+        
         filtered_listings = query.all()
 
-        # format the results
+        # --- IMPROVEMENT: Use the owner serializer for consistency ---
         result = [{
             "id": l.id, "title": l.title, "description": l.description,
-            "amenities": l.amenities or [], "price": l.price,
-            "location": l.location, "owner_id": l.owner_id,
-            "image_urls": l.image_urls or []
+            "street_address": l.street_address, "city": l.city, "state": l.state, "pincode": l.pincode,
+            "propertyType": l.propertyType, "monthlyRent": l.monthlyRent, "securityDeposit": l.securityDeposit,
+            "bedrooms": l.bedrooms, "bathrooms": l.bathrooms, "seating": l.seating,
+            "area": l.area, "furnishing": l.furnishing, "amenities": l.amenities or [],
+            "image_urls": l.image_urls or [], "owner": serialize_owner(l.owner)
         } for l in filtered_listings]
+        return {"success": True, "count": len(result), "data": result}
 
-        return {"success": True, "count": len(result), "data": result}, 200
+
+class ReviewCreate(Resource):
+    @jwt_required()
+    def post(self, listing_id):
+        user_id = int(get_jwt_identity())
+        data = request.get_json()
+        rating = data.get('rating')
+        comment = data.get('comment')
+        if not rating or not (1 <= int(rating) <= 5):
+            return {"success": False, "message": "Rating must be between 1 and 5"}, 400
+        completed_booking = Booking.query.filter(
+            Booking.user_id == user_id, Booking.listing_id == listing_id,
+            Booking.status == 'confirmed', Booking.appointment_date < date.today()
+        ).first()
+        if not completed_booking:
+            return {"success": False, "message": "You can only review after a completed appointment."}, 403
+        if Review.query.filter_by(user_id=user_id, listing_id=listing_id).first():
+            return {"success": False, "message": "You have already reviewed this listing."}, 409
+        new_review = Review(rating=rating, comment=comment, user_id=user_id, listing_id=listing_id)
+        db.session.add(new_review)
+        db.session.commit()
+        review_data = {
+            "id": new_review.id, "author_username": new_review.author.username,
+            "rating": new_review.rating, "comment": new_review.comment,
+            "created_at": new_review.created_at.isoformat()
+        }
+        return {"success": True, "data": review_data, "message": "Review submitted successfully"}, 201
 
 
 api.add_resource(ListingCreate, "/listings/create")
 api.add_resource(ListingList, "/listings")
 api.add_resource(ListingResource, "/listings/<int:listing_id>")
-api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")  
-api.add_resource(ListingSearch, "/listings/search")  
+api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
+api.add_resource(ListingSearch, "/listings/search")
+api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
