@@ -1,65 +1,66 @@
+# --- Cleaned up and consolidated imports ---
+import os
+import json
 import re
 from datetime import datetime, timezone
 from flask import request, Blueprint
 from flask_restful import Api, Resource
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
 from argon2.exceptions import VerifyMismatchError
+from sqlalchemy import or_
+import cloudinary.uploader
+
 from ..extensions import db, mail, ph, jwt
 from ..models import User, TokenBlocklist
 from ..utils.email_utils import send_verification_email, confirm_email_token, send_password_reset_email, confirm_password_reset_token
 
+# --- Image validation constants and helper function ---
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+MAX_CONTENT_LENGTH = 5 * 1024 * 1024 # 5 Megabytes
 
-# this function is called automatically for every protected endpoint.
-@jwt.token_in_blocklist_loader
-def check_if_token_in_blocklist(jwt_header, jwt_payload):
-    # checks if the token's JTI (JWT ID) exists in our blocklist database
-    jti = jwt_payload["jti"]
-    token = TokenBlocklist.query.filter_by(jti=jti).one_or_none()
-    # return True if the token is in the blocklist, False otherwise
-    return token is not None
+def allowed_file(filename):
+    """Checks if a filename has an allowed extension."""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-
-# create Blueprint
+# Blueprint and API setup
 auth_bp = Blueprint('auth', __name__)
 api = Api(auth_bp)
 
-
-# regex patterns
+# Regex patterns
 password_pattern = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$'
 email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+mobile_pattern = r"^[6-9]\d{9}$"
 
+# JWT Blocklist Checker
+@jwt.token_in_blocklist_loader
+def check_if_token_in_blocklist(jwt_header, jwt_payload):
+    jti = jwt_payload["jti"]
+    token = TokenBlocklist.query.filter_by(jti=jti).one_or_none()
+    return token is not None
 
-@auth_bp.route('/helloworld')
-def hello():
-    return {"success": True, "message": "Hello"}, 200
-
-# confirmation of link
+# --- Standard Flask Routes ---
 @auth_bp.route('/confirm/<token>')
 def confirm_email(token):
     email = confirm_email_token(token)
     if not email:
         return {"success": False, "message": "Invalid or expired link"}, 400
-
     user = User.query.filter_by(email=email).first()
     if not user:
         return {"success": False, "message": "User not found"}, 404
-
     if user.is_verified:
         return {"success": True, "message": "Already verified"}, 200
-
     user.is_verified = True
     db.session.commit()
     return {"success": True, "message": "Email verified successfully"}, 200
 
+# --- API Resource Classes ---
 
-# registration
 class UserRegistration(Resource):
     def post(self):
         data = request.get_json()
-        username, email, password, role = data.get("username"), data.get("email"), data.get("password"), data.get("role")
+        username, email, password, mobile_no, role = data.get("username"), data.get("email"), data.get("password"), str(data.get("mobile_no")), data.get("role")
 
-        # validations
-        if not all([username, email, password, role]):
+        if not all([username, email, password, mobile_no, role]):
             return {"success": False, "message": "Missing fields"}, 400
         if role.lower() not in ["user", "owner"]:
             return {"success": False, "message": "Invalid role"}, 400
@@ -67,22 +68,22 @@ class UserRegistration(Resource):
             return {"success": False, "message": "Invalid email format"}, 400
         if not re.match(password_pattern, password):
             return {"success": False, "message": "Password must meet complexity requirements"}, 400
+        if not re.match(mobile_pattern, mobile_no):
+            return {"success": False, "message": "Invalid mobile number format"}, 400
         
-        if User.query.filter((User.username == username) | (User.email == email)).first():
-            return {"success": False, "message": "Username or Email already taken"}, 400
+        if User.query.filter(or_(User.username == username, User.email == email)).first():
+            return {"success": False, "message": "Username or Email already taken"}, 409
 
         try:
-            hashed_pw = ph.hash(password) # password hashing
-            new_user = User(username=username, email=email, password=hashed_pw, role=role)
+            hashed_pw = ph.hash(password)
+            new_user = User(username=username, email=email, password=hashed_pw, mobile_no=mobile_no, role=role)
             db.session.add(new_user)
             db.session.commit()
-
             send_verification_email(mail, email)
             return {"success": True, "message": "Check email for verification link"}, 201
         except Exception as e:
             db.session.rollback()
-            return {"success": False, "message": f"Database error: {e}"}, 500
-
+            return {"success": False, "message": f"An error occurred: {e}"}, 500
 
 # login
 class UserLogin(Resource):
@@ -107,7 +108,7 @@ class UserLogin(Resource):
         if not user.is_verified:
             return {"success": False, "message": "Email not verified. Check your inbox."}, 403
 
-        # generating tokens
+        # generate tokens
         access_token = create_access_token(identity=str(user.id))
         refresh_token = create_refresh_token(identity=str(user.id))
         return {"success": True, "access_token": access_token, "refresh_token": refresh_token, "role": user.role}, 200
@@ -159,6 +160,7 @@ class ForgotPassword(Resource):
             send_password_reset_email(mail, email)
         
         return {"success": True, "message": "If an account with that email exists, a reset link has been sent."}, 200
+
 # reset password (logged out)
 class ResetPassword(Resource):
     def post(self, token):
@@ -178,105 +180,92 @@ class ResetPassword(Resource):
         db.session.commit()
         return {"success": True, "message": "Password updated successfully"}, 200
 
+
 # profile
 class UserProfileFetch(Resource):
     @jwt_required()
     def get(self):
-        # fetches the current user's complete profile information
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
-
-        if not user:
-            return {"success": False, "message": "User not found"}, 404
+        if not user: return {"success": False, "message": "User not found"}, 404
 
         profile_data = {
-            "username": user.username, "email": user.email, "role": user.role,
-            "bio": user.bio, "mobile_no": user.mobile_no, "address": user.address,
-            "gender": user.gender, "age": user.age
+            "username": user.username, "email": user.email, "mobile_no": user.mobile_no,
+            "role": user.role, "bio": user.bio, "address": user.address,
+            "gender": user.gender, "age": user.age,
+            "profile_image_url": user.profile_image_url
         }
-        return {"success": True, "data": profile_data}, 200
-    
+        return {"success": True, "data": profile_data}
 
-# update profile
+
 class UserProfileUpdate(Resource):
     @jwt_required()
     def patch(self):
-        # updates the current user's profile with validation
-        user_id = get_jwt_identity()
-        user = User.query.get(user_id)
+        user_id = int(get_jwt_identity())
+        user = User.query.get_or_404(user_id, description="User not found")
 
-        if not user:
-            return {"success": False, "message": "User not found"}, 404
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename != '':
+                if not allowed_file(file.filename):
+                    return {"success": False, "message": f"Invalid file type: {file.filename}."}, 400
+                file.seek(0, os.SEEK_END)
+                if file.tell() > MAX_CONTENT_LENGTH:
+                    return {"success": False, "message": f"File too large: {file.filename}."}, 400
+                file.seek(0)
+                try:
+                    upload_result = cloudinary.uploader.upload(file)
+                    user.profile_image_url = upload_result['secure_url']
+                except Exception as e:
+                    return {"success": False, "message": f"Image upload failed: {str(e)}"}, 500
 
-        data = request.get_json()
-
-        if "username" in data:
-            new_username = data["username"]
-            if User.query.filter(User.username == new_username, User.id != user_id).first():
-                return {"success": False, "message": "Username already taken"}, 409
-            user.username = new_username
-
-        if "mobile_no" in data and data["mobile_no"] is not None:
-            mobile_no = str(data["mobile_no"])
-            if not re.match(r'^[6-9]\d{9}$', mobile_no):
-                return {"success": False, "message": "Invalid mobile number format"}, 400
-            user.mobile_no = mobile_no
-
-        if "age" in data and data["age"] is not None:
+        if 'data' in request.form:
             try:
-                age_int = int(data["age"])
-                if not (18 <= age_int <= 100):
-                    return {"success": False, "message": "Age must be between 18 and 100."}, 400
-                user.age = age_int
-            except (ValueError, TypeError):
-                return {"success": False, "message": "Age must be a valid number."}, 400
+                data = json.loads(request.form['data'])
+            except json.JSONDecodeError:
+                return {"success": False, "message": "Invalid JSON format in 'data' field"}, 400
 
-        if "gender" in data and data["gender"] is not None:
-            gender = data["gender"]
-            if gender.lower() not in ["male", "female"]:
-                return {"success": False, "message": "Invalid gender."}, 400
-            user.gender = gender
+            if "username" in data:
+                new_username = data["username"]
+                if User.query.filter(User.username == new_username, User.id != user_id).first():
+                    return {"success": False, "message": "Username already taken"}, 409
+                user.username = new_username
 
-        if "bio" in data: user.bio = data["bio"]
-        if "address" in data: user.address = data["address"]
-        
+            if "mobile_no" in data and data["mobile_no"] is not None:
+                mobile_no = str(data["mobile_no"])
+                if not re.match(mobile_pattern, mobile_no):
+                    return {"success": False, "message": "Invalid mobile number format"}, 400
+                user.mobile_no = mobile_no
+            
+            if "age" in data: user.age = data.get("age")
+            if "gender" in data: user.gender = data.get("gender")
+            if "bio" in data: user.bio = data.get("bio")
+            if "address" in data: user.address = data.get("address")
+
         db.session.commit()
-        return {"success": True, "message": "Profile updated successfully"}, 200
+        return UserProfileFetch().get()
 
 
-# delete profile
 class UserProfileDelete(Resource):
     @jwt_required()
     def delete(self):
-        # deletes the user account and adds their current token to the blocklist to immediately invalidate it
         user_id = get_jwt_identity()
-        user = User.query.get(user_id)
-
-        if not user:
-            return {"success": False, "message": "User not found"}, 404
-        
-        # get the unique identifier (jti) of the token being used
+        user = User.query.get_or_404(user_id, description="User not found")
         jti = get_jwt()["jti"]
         now = datetime.now(timezone.utc)
-        
-        # add the token to the blocklist in the database
         db.session.add(TokenBlocklist(jti=jti, created_at=now))
-        
         db.session.delete(user)
         db.session.commit()
-        
-        return {"success": True, "message": "Account deleted. You have been logged out."}, 200
+        return '', 204
 
 
+# Register all API resources with their endpoints
 api.add_resource(UserRegistration, "/register")
 api.add_resource(UserLogin, "/login")
-
 api.add_resource(TokenRefresh, "/refresh")
-
 api.add_resource(ChangePassword, "/change-password")
 api.add_resource(ForgotPassword, "/forgot-password")
 api.add_resource(ResetPassword, "/reset-password/<string:token>")
-
 api.add_resource(UserProfileFetch, "/profile")
 api.add_resource(UserProfileUpdate, "/profile")
 api.add_resource(UserProfileDelete, "/profile")
