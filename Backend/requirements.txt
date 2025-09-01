@@ -1,0 +1,11 @@
+argon2-cffi
+cloudinary
+Flask
+Flask-Cors
+Flask-JWT-Extended
+Flask-Mail
+Flask-RESTful
+Flask-SQLAlchemy
+gunicorn
+PyMySQL
+python-dotenv
