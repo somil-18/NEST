@@ -1,10 +1,11 @@
+argon2-cffi
+cloudinary
 Flask
-Flask-RESTful
-Flask-SQLAlchemy
+Flask-Cors
 Flask-JWT-Extended
 Flask-Mail
-Flask-Cors
-argon2-cffi
-python-dotenv
+Flask-RESTful
+Flask-SQLAlchemy
+gunicorn
 PyMySQL
-cloudinary
+python-dotenv
