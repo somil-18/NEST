@@ -4,7 +4,6 @@ from .extensions import db, mail, jwt, cors
 import cloudinary
 import os
 
-
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
@@ -14,6 +13,7 @@ def create_app(config_class=Config):
     mail.init_app(app)
     jwt.init_app(app)
     cors.init_app(app, resources={r"/*": {"origins": app.config['FRONTEND_URL']}}, supports_credentials=True)
+
 
     cloudinary.config(
         cloud_name = os.getenv('CLOUDINARY_CLOUD_NAME'),
@@ -26,10 +26,11 @@ def create_app(config_class=Config):
     from .routes.auth import auth_bp
     from .routes.listings import listings_bp
     from .routes.bookings import bookings_bp
+    from .routes.favorites import favorites_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(listings_bp)
     app.register_blueprint(bookings_bp)
-
+    app.register_blueprint(favorites_bp)
 
     return app
