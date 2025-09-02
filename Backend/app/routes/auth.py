@@ -54,6 +54,10 @@ def confirm_email(token):
     return {"success": True, "message": "Email verified successfully"}, 200
 
 # --- API Resource Classes ---
+@auth_bp.route('/')
+def index():
+    """A simple welcome message for the root URL."""
+    return {"message": "Hello World"}, 200
 
 class UserRegistration(Resource):
     def post(self):
@@ -269,3 +273,4 @@ api.add_resource(ResetPassword, "/reset-password/<string:token>")
 api.add_resource(UserProfileFetch, "/profile")
 api.add_resource(UserProfileUpdate, "/profile")
 api.add_resource(UserProfileDelete, "/profile")
+
