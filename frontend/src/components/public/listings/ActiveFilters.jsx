@@ -68,48 +68,6 @@ const ActiveFilters = ({ filters, onFilterChange, onClearFilters }) => {
             </button>
           </Badge>
         )}
-
-        {filters.locations.map((location) => (
-          <Badge
-            key={location}
-            variant="secondary"
-            className="flex items-center gap-1"
-          >
-            {location}
-            <button
-              onClick={() =>
-                onFilterChange(
-                  "locations",
-                  filters.locations.filter((l) => l !== location)
-                )
-              }
-              className="ml-1 hover:bg-gray-200 rounded-full p-0.5"
-            >
-              <X size={12} />
-            </button>
-          </Badge>
-        ))}
-
-        {filters.amenities.map((amenity) => (
-          <Badge
-            key={amenity}
-            variant="secondary"
-            className="flex items-center gap-1"
-          >
-            {amenity}
-            <button
-              onClick={() =>
-                onFilterChange(
-                  "amenities",
-                  filters.amenities.filter((a) => a !== amenity)
-                )
-              }
-              className="ml-1 hover:bg-gray-200 rounded-full p-0.5"
-            >
-              <X size={12} />
-            </button>
-          </Badge>
-        ))}
       </div>
     </div>
   );

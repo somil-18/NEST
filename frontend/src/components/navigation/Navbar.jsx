@@ -1,6 +1,6 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
-import { Menu, X, User, Info, Home, Phone } from "lucide-react";
+import { Menu, X, User, Info, Home, Phone, SquareDashed } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -19,8 +19,12 @@ const navLinks = [
 ];
 
 export default function Navbar() {
+  const user = JSON.parse(localStorage.getItem("user"));
   return (
-    <nav className="sticky top-0 z-50 w-full bg-white border-b" style={{ borderColor: colors.border }}>
+    <nav
+      className="sticky top-0 z-50 w-full bg-white border-b"
+      style={{ borderColor: colors.border }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo and Name */}
@@ -44,23 +48,23 @@ export default function Navbar() {
                 to={to}
                 className={({ isActive }) =>
                   `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                    isActive
-                      ? ""
-                      : ""
+                    isActive ? "" : ""
                   }`
                 }
                 style={({ isActive }) => ({
                   color: isActive ? colors.primary : colors.muted,
-                  backgroundColor: isActive ? colors.lightPrimary : "transparent"
+                  backgroundColor: isActive
+                    ? colors.lightPrimary
+                    : "transparent",
                 })}
                 onMouseEnter={(e) => {
-                  if (!e.currentTarget.getAttribute('aria-current')) {
+                  if (!e.currentTarget.getAttribute("aria-current")) {
                     e.currentTarget.style.color = colors.primary;
                     e.currentTarget.style.backgroundColor = colors.lightPrimary;
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (!e.currentTarget.getAttribute('aria-current')) {
+                  if (!e.currentTarget.getAttribute("aria-current")) {
                     e.currentTarget.style.color = colors.muted;
                     e.currentTarget.style.backgroundColor = "transparent";
                   }
@@ -70,21 +74,57 @@ export default function Navbar() {
                 {label}
               </NavLink>
             ))}
-            <NavLink to="/login">
-              <Button
-                className="flex items-center gap-2 px-4 py-2 ml-4 rounded-md text-white font-semibold transition-colors duration-200"
-                style={{ backgroundColor: colors.primary, fontSize: 14 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor = colors.accent)
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.backgroundColor = colors.primary)
-                }
-              >
-                <User size={16} />
-                Login
-              </Button>
-            </NavLink>
+            {!user && (
+              <NavLink to="/login">
+                <Button
+                  className="flex items-center gap-2 px-4 py-2 ml-4 rounded-md text-white font-semibold transition-colors duration-200"
+                  style={{ backgroundColor: colors.primary, fontSize: 14 }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor = colors.accent)
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = colors.primary)
+                  }
+                >
+                  <User size={16} />
+                  Login
+                </Button>
+              </NavLink>
+            )}
+            {user && user?.role === "user" && (
+              <NavLink to="/profile">
+                <Button
+                  className="flex items-center gap-2 px-4 py-2 ml-4 rounded-md text-white font-semibold transition-colors duration-200"
+                  style={{ backgroundColor: colors.primary, fontSize: 14 }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor = colors.accent)
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = colors.primary)
+                  }
+                >
+                  <User size={16} />
+                  Profile
+                </Button>
+              </NavLink>
+            )}
+            {user && user?.role === "owner" && (
+              <NavLink to="/owner">
+                <Button
+                  className="flex items-center gap-2 px-4 py-2 ml-4 rounded-md text-white font-semibold transition-colors duration-200"
+                  style={{ backgroundColor: colors.primary, fontSize: 14 }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor = colors.accent)
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = colors.primary)
+                  }
+                >
+                  <SquareDashed size={16} />
+                  Dashboard
+                </Button>
+              </NavLink>
+            )}
           </div>
 
           {/* Mobile Hamburger */}
@@ -95,8 +135,12 @@ export default function Navbar() {
                   aria-label="Open menu"
                   className="inline-flex items-center justify-center rounded-md p-2 transition-colors focus:outline-none"
                   style={{ color: colors.muted }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = colors.primary)}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = colors.muted)}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = colors.primary)
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = colors.muted)
+                  }
                 >
                   <Menu size={28} />
                 </button>
@@ -120,8 +164,12 @@ export default function Navbar() {
                         aria-label="Close menu"
                         className="absolute top-7 right-4 rounded-md p-1 transition-colors focus:outline-none"
                         style={{ color: colors.muted }}
-                        onMouseEnter={(e) => (e.currentTarget.style.color = colors.primary)}
-                        onMouseLeave={(e) => (e.currentTarget.style.color = colors.muted)}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.color = colors.primary)
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.color = colors.muted)
+                        }
                       >
                         <X size={24} />
                       </button>
@@ -136,16 +184,19 @@ export default function Navbar() {
                       className="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
                       style={({ isActive }) => ({
                         color: isActive ? colors.primary : colors.muted,
-                        backgroundColor: isActive ? colors.lightPrimary : "transparent"
+                        backgroundColor: isActive
+                          ? colors.lightPrimary
+                          : "transparent",
                       })}
                       onMouseEnter={(e) => {
-                        if (!e.currentTarget.getAttribute('aria-current')) {
+                        if (!e.currentTarget.getAttribute("aria-current")) {
                           e.currentTarget.style.color = colors.primary;
-                          e.currentTarget.style.backgroundColor = colors.lightPrimary;
+                          e.currentTarget.style.backgroundColor =
+                            colors.lightPrimary;
                         }
                       }}
                       onMouseLeave={(e) => {
-                        if (!e.currentTarget.getAttribute('aria-current')) {
+                        if (!e.currentTarget.getAttribute("aria-current")) {
                           e.currentTarget.style.color = colors.muted;
                           e.currentTarget.style.backgroundColor = "transparent";
                         }
@@ -159,21 +210,72 @@ export default function Navbar() {
                   ))}
                 </nav>
                 <div className="mt-8">
-                  <NavLink to="/login">
-                    <Button
-                      className="flex w-full items-center justify-center gap-2 rounded-md py-2 text-white font-semibold transition-colors duration-200"
-                      style={{ fontSize: 16, backgroundColor: colors.primary }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor = colors.accent)
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor = colors.primary)
-                      }
-                    >
-                      <User size={20} />
-                      Login
-                    </Button>
-                  </NavLink>
+                  {!user && (
+                    <NavLink to="/login">
+                      <Button
+                        className="flex items-center gap-2 px-4 py-2 ml-4 rounded-md text-white font-semibold transition-colors duration-200"
+                        style={{
+                          backgroundColor: colors.primary,
+                          fontSize: 14,
+                        }}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.backgroundColor =
+                            colors.accent)
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.backgroundColor =
+                            colors.primary)
+                        }
+                      >
+                        <User size={16} />
+                        Login
+                      </Button>
+                    </NavLink>
+                  )}
+                  {user && user?.role === "user" && (
+                    <NavLink to="/profile">
+                      <Button
+                        className="flex items-center gap-2 px-4 py-2 ml-4 rounded-md text-white font-semibold transition-colors duration-200"
+                        style={{
+                          backgroundColor: colors.primary,
+                          fontSize: 14,
+                        }}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.backgroundColor =
+                            colors.accent)
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.backgroundColor =
+                            colors.primary)
+                        }
+                      >
+                        <User size={16} />
+                        Profile
+                      </Button>
+                    </NavLink>
+                  )}
+                  {user && user?.role === "owner" && (
+                    <NavLink to="/owner">
+                      <Button
+                        className="flex items-center gap-2 px-4 py-2 ml-4 rounded-md text-white font-semibold transition-colors duration-200"
+                        style={{
+                          backgroundColor: colors.primary,
+                          fontSize: 14,
+                        }}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.backgroundColor =
+                            colors.accent)
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.backgroundColor =
+                            colors.primary)
+                        }
+                      >
+                        <SquareDashed size={16} />
+                        Dashboard
+                      </Button>
+                    </NavLink>
+                  )}
                 </div>
               </SheetContent>
             </Sheet>

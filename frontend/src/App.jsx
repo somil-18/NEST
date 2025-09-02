@@ -9,8 +9,16 @@ import Listings from "./pages/public/Listings";
 import ListingDetail from "./pages/public/ListingDetail";
 import NotFoundPage from "./pages/public/NotFound";
 import EmailVerification from "./pages/verification/EmailVerification";
-import ResetPassword from "./pages/forgot_password/ForgotPassword";
 import ForgotPassword from "./pages/forgot_password/ForgotPassword";
+import OwnerDashboard from "./pages/owner/OwnerDashboard";
+import OwnerLayout from "./layouts/OwnerLayout";
+import AddListingPage from "./pages/owner/AddListing";
+import UserLayout from "./layouts/UserLayout";
+import UserProfile from "./pages/user/UserProfile";
+import UserFavourites from "./pages/user/UserFavourites";
+import Terms from "./components/public/terms_privacy_pages/Terms";
+import Policy from "./components/public/terms_privacy_pages/Policy";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 const App = () => {
   return (
@@ -24,8 +32,32 @@ const App = () => {
         <Route path="listings" element={<Listings />} />
         <Route path="listings/:id" element={<ListingDetail />} />
         <Route path="contact" element={<Contact />} />
+        <Route path="terms" element={<Terms />} />
+        <Route path="policy" element={<Policy />} />
         <Route path="verify-email/:token" element={<EmailVerification />} />
         <Route path="forgot-password/:token" element={<ForgotPassword />} />
+      </Route>
+      <Route
+        path="/owner"
+        element={
+          <ProtectedRoute roles={["owner"]}>
+            <OwnerLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<OwnerDashboard />} />
+        <Route path="add-listing" element={<AddListingPage />} />
+      </Route>
+      <Route
+        path="/user"
+        element={
+          <ProtectedRoute roles={["user"]}>
+            <UserLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/user/:id" element={<UserProfile />} />
+        <Route path="/user/:id/favourites" element={<UserFavourites />} />
       </Route>
     </Routes>
   );

@@ -6,33 +6,49 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { colors } from "@/utils/colors";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import ForgotPasswordDialog from "./ForgotPasswordDialog";
+import axios from "axios";
+import { API_URL } from "@/utils/constants";
 
 // Yup validation schema for login
 const loginValidationSchema = Yup.object({
-  email: Yup.string()
-    .email("Invalid email address")
-    .required("Email is required"),
+  username: Yup.string().required("Username is required"),
   password: Yup.string()
     .min(6, "Password must be at least 6 characters")
     .required("Password is required"),
 });
 
 const loginInitialValues = {
-  email: "",
+  username: "",
   password: "",
 };
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
 
   const formik = useFormik({
     initialValues: loginInitialValues,
     validationSchema: loginValidationSchema,
-    onSubmit: (values) => {
+    onSubmit: async (values) => {
       console.log("Login Values:", values);
-      // Handle login submission here - API call, authentication, etc.
+      try {
+        const response = await axios.post(`${API_URL}/login`, values);
+        console.log(response);
+        if(response?.data?.success){
+          localStorage.setItem("token", response.data.access_token);
+          localStorage.setItem("refresh_token", response.data.refresh_token);
+          localStorage.setItem("user", JSON.stringify(response.data));
+        }
+        if (response?.data?.role === "user") {
+          navigate("/");
+        } else if (response?.data?.role === "owner") {
+          navigate("/owner");
+        }
+      } catch (error) {
+        console.log(error);
+      }
     },
   });
 
@@ -53,14 +69,14 @@ export default function Login() {
         </h2>
 
         <form onSubmit={formik.handleSubmit} className="space-y-6" noValidate>
-          {/* Email Field */}
+          {/* Username Field */}
           <div>
             <Label
-              htmlFor="email"
+              htmlFor="username"
               className="block mb-2 font-medium"
               style={{ color: colors.dark }}
             >
-              Email <span style={{ color: colors.error }}>*</span>
+              Username <span style={{ color: colors.error }}>*</span>
             </Label>
             <div className="relative">
               <span
@@ -70,28 +86,34 @@ export default function Login() {
                 <Mail size={20} />
               </span>
               <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="you@example.com"
-                value={formik.values.email}
+                id="username"
+                name="username"
+                type="text"
+                placeholder="Your username"
+                value={formik.values.username}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 className="pl-10 w-full rounded border outline-none transition-colors"
-                style={{ 
+                style={{
                   backgroundColor: colors.light,
                   color: colors.dark,
-                  borderColor: formik.touched.email && formik.errors.email ? colors.error : colors.border
+                  borderColor:
+                    formik.touched.username && formik.errors.username
+                      ? colors.error
+                      : colors.border,
                 }}
                 onFocus={(e) => {
                   e.currentTarget.style.outline = "none";
-                  e.currentTarget.style.borderColor = formik.touched.email && formik.errors.email ? colors.error : colors.border;
+                  e.currentTarget.style.borderColor =
+                    formik.touched.username && formik.errors.username
+                      ? colors.error
+                      : colors.border;
                 }}
               />
             </div>
-            {formik.touched.email && formik.errors.email && (
+            {formik.touched.username && formik.errors.username && (
               <p className="mt-1 text-sm" style={{ color: colors.error }}>
-                {formik.errors.email}
+                {formik.errors.username}
               </p>
             )}
           </div>
@@ -121,14 +143,20 @@ export default function Login() {
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 className="pl-10 pr-10 w-full rounded border outline-none transition-colors"
-                style={{ 
+                style={{
                   backgroundColor: colors.light,
                   color: colors.dark,
-                  borderColor: formik.touched.password && formik.errors.password ? colors.error : colors.border
+                  borderColor:
+                    formik.touched.password && formik.errors.password
+                      ? colors.error
+                      : colors.border,
                 }}
                 onFocus={(e) => {
                   e.currentTarget.style.outline = "none";
-                  e.currentTarget.style.borderColor = formik.touched.password && formik.errors.password ? colors.error : colors.border;
+                  e.currentTarget.style.borderColor =
+                    formik.touched.password && formik.errors.password
+                      ? colors.error
+                      : colors.border;
                 }}
               />
               <button
@@ -138,8 +166,12 @@ export default function Login() {
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 className="absolute inset-y-0 right-3 flex items-center transition-colors"
                 style={{ color: colors.muted }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = colors.primary)}
-                onMouseLeave={(e) => (e.currentTarget.style.color = colors.muted)}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.color = colors.primary)
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.color = colors.muted)
+                }
               >
                 {showPassword ? (
                   <EyeOff size={20} className="cursor-pointer" />

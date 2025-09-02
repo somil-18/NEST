@@ -3,13 +3,15 @@ import { useFormik } from "formik";
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import { User, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { User, Mail, Lock, Eye, EyeOff, Phone } from "lucide-react";
 import { colors } from "@/utils/colors";
 import {
   registrationInitialValues,
   registrationValidationSchema,
 } from "@/yup/register";
 import { Link } from "react-router-dom";
+import axios from "axios";
+import { API_URL } from "@/utils/constants";
 
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
@@ -17,9 +19,14 @@ export default function Register() {
   const formik = useFormik({
     initialValues: registrationInitialValues,
     validationSchema: registrationValidationSchema,
-    onSubmit: (values) => {
+    onSubmit: async (values) => {
       console.log("Form Values:", values);
-      // Handle form submission here - API call, etc.
+      try {
+        const response = await axios.post(`${API_URL}/register`, values);
+        console.log(response);
+      } catch (error) {
+        console.log(error);
+      }
     },
   });
 
@@ -90,6 +97,53 @@ export default function Register() {
             {formik.touched.username && formik.errors.username && (
               <p className="mt-1 text-sm" style={{ color: colors.error }}>
                 {formik.errors.username}
+              </p>
+            )}
+          </div>
+          <div>
+            <Label
+              htmlFor="mobile_no"
+              className="block mb-2 font-medium"
+              style={{ color: colors.dark }}
+            >
+              Phone <span style={{ color: colors.error }}>*</span>
+            </Label>
+            <div className="relative">
+              <span
+                className="absolute inset-y-0 left-3 flex items-center pointer-events-none"
+                style={{ color: colors.accent }}
+              >
+                <Phone size={20} />
+              </span>
+              <Input
+                id="mobile_no"
+                name="mobile_no"
+                type="text"
+                placeholder="Your phone number"
+                value={formik.values.mobile_no}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                className="pl-10 w-full rounded border outline-none transition-colors"
+                style={{
+                  backgroundColor: colors.light,
+                  color: colors.dark,
+                  borderColor:
+                    formik.touched.mobile_no && formik.errors.mobile_no
+                      ? colors.error
+                      : colors.border,
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.outline = "none";
+                  e.currentTarget.style.borderColor =
+                    formik.touched.mobile_no && formik.errors.mobile_no
+                      ? colors.error
+                      : colors.border;
+                }}
+              />
+            </div>
+            {formik.touched.mobile_no && formik.errors.mobile_no && (
+              <p className="mt-1 text-sm" style={{ color: colors.error }}>
+                {formik.errors.mobile_no}
               </p>
             )}
           </div>
