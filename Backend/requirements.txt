@@ -7,5 +7,5 @@ Flask-Mail
 Flask-RESTful
 Flask-SQLAlchemy
 gunicorn
-PyMySQL
+psycopg2-binary
 python-dotenv
