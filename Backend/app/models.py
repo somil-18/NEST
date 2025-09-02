@@ -56,7 +56,7 @@ class Listing(db.Model):
     area = db.Column(db.String(50), nullable=True)
     furnishing = db.Column(db.String(50), nullable=True)
     amenities = db.Column(JSON)
-    image_urls = db.Column(db.JSON, nullable=False)
+    image_urls = db.Column(db.JSON, nullable=True)
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
 
     bookings = db.relationship('Booking', backref='listing', lazy=True, cascade="all, delete-orphan")
@@ -97,4 +97,5 @@ class TokenBlocklist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     jti = db.Column(db.String(36), nullable=False, index=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+
 
