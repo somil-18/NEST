@@ -31,6 +31,16 @@ password_pattern = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%
 email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 mobile_pattern = r"^[6-9]\d{9}$"
 
+def serialize_user_profile(user):
+    if not user: return None
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "mobile_no": user.mobile_no,
+        "role": user.role
+    }
+
 # JWT Blocklist Checker
 @jwt.token_in_blocklist_loader
 def check_if_token_in_blocklist(jwt_header, jwt_payload):
@@ -112,10 +122,12 @@ class UserLogin(Resource):
         if not user.is_verified:
             return {"success": False, "message": "Email not verified. Check your inbox."}, 403
 
+        user_data = serialize_user_profile(user)
+
         # generate tokens
         access_token = create_access_token(identity=str(user.id))
         refresh_token = create_refresh_token(identity=str(user.id))
-        return {"success": True, "access_token": access_token, "refresh_token": refresh_token, "role": user.role}, 200
+        return {"success": True, "access_token": access_token, "refresh_token": refresh_token, "user": user_data}, 200
 
 
 # generate new access token
@@ -273,4 +285,5 @@ api.add_resource(ResetPassword, "/reset-password/<string:token>")
 api.add_resource(UserProfileFetch, "/profile")
 api.add_resource(UserProfileUpdate, "/profile")
 api.add_resource(UserProfileDelete, "/profile")
+
 
