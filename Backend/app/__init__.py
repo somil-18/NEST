@@ -33,4 +33,8 @@ def create_app(config_class=Config):
     app.register_blueprint(bookings_bp)
     app.register_blueprint(favorites_bp)
 
+     with app.app_context():
+        db.create_all()
+
     return app
+
