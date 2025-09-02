@@ -1,6 +1,6 @@
 from .extensions import db
 # from sqlalchemy.dialects.mysql import JSON
-from sqlalchemy import JSON 
+from sqlalchemy import JSON, func
 
 
 # This is our junction table for the many-to-many relationship.
@@ -97,6 +97,7 @@ class TokenBlocklist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     jti = db.Column(db.String(36), nullable=False, index=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+
 
 
 
