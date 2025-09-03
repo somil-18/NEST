@@ -152,7 +152,7 @@ class ListingList(Resource):
             all_listings.append(listing_summary)
 
             # A listing is "featured" if it has at least 2 reviews AND an average rating of 4.0 or higher.
-            if review_count and avg_rating and review_count >= 2 and avg_rating >= 4.0:
+            if avg_rating and avg_rating >= 4.0:
                 featured_listings.append(listing_summary)
 
         # Sort the featured list by rating (highest first) and limit to top 5
@@ -333,6 +333,7 @@ api.add_resource(ListingResource, "/listings/<int:listing_id>")
 api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
+
 
 
 
