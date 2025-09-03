@@ -6,7 +6,7 @@ from flask import request, Blueprint
 from flask_restful import Api, Resource
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_, cast, String, func
-from sqlalchemy.orm.attributes import flag_modified  # <-- FIXED IMPORT
+from sqlalchemy.orm.attributes import flag_modified 
 import cloudinary.uploader
 
 from ..extensions import db
@@ -21,6 +21,20 @@ def serialize_owner(owner):
     return {
         "id": owner.id, "username": owner.username, "mobile_no": owner.mobile_no,
         "gender": owner.gender, "age": owner.age
+    }
+
+def serialize_listing_summary(listing, status, avg_rating, review_count):
+    """Creates a compact, summary version of a listing for the main list."""
+    return {
+        "id": listing.id,
+        "title": listing.title,
+        "monthlyRent": listing.monthlyRent,
+        "city": listing.city,
+        "state": listing.state,
+        "main_image_url": listing.image_urls[0] if listing.image_urls else None,
+        "availability_status": status,
+        "average_rating": round(float(avg_rating), 2) if avg_rating else None,
+        "review_count": review_count or 0
     }
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -94,33 +108,63 @@ class ListingCreate(Resource):
 
 class ListingList(Resource):
     def get(self):
+        """
+        Fetches all listings and separates them into 'featured' (top-rated)
+        and 'all_listings' categories.
+        """
         today = date.today()
-        listings = Listing.query.all()
-        result = []
 
-        for l in listings:
-            total_attendees_today = db.session.query(func.sum(Booking.attendees)).filter(
-                Booking.listing_id == l.id,
-                Booking.appointment_date == today,
-                Booking.status.in_(['Confirmed', 'Pending'])
-            ).scalar() or 0
+        # Query to get all listings with their review and booking stats
+        review_stats_subquery = db.session.query(
+            Review.listing_id,
+            func.avg(Review.rating).label('avg_rating'),
+            func.count(Review.id).label('review_count')
+        ).group_by(Review.listing_id).subquery()
+
+        attendees_subquery = db.session.query(
+            Booking.listing_id,
+            func.sum(Booking.attendees).label('total_attendees')
+        ).filter(
+            Booking.appointment_date == today,
+            Booking.status.in_(['Confirmed', 'Pending'])
+        ).group_by(Booking.listing_id).subquery()
+        
+        all_listings_query = db.session.query(
+            Listing,
+            review_stats_subquery.c.avg_rating,
+            review_stats_subquery.c.review_count,
+            attendees_subquery.c.total_attendees
+        ).outerjoin(
+            review_stats_subquery, Listing.id == review_stats_subquery.c.listing_id
+        ).outerjoin(
+            attendees_subquery, Listing.id == attendees_subquery.c.listing_id
+        ).all()
+
+        # Process the query results into two separate lists
+        featured_listings = []
+        all_listings = []
+
+        for listing, avg_rating, review_count, total_attendees in all_listings_query:
+            attendees_today = total_attendees or 0
+            status = "Booked" if listing.seating is not None and attendees_today >= listing.seating else "Available"
             
-            status = "Booked" if l.seating is not None and total_attendees_today >= l.seating else "Available"
+            listing_summary = serialize_listing_summary(listing, status, avg_rating, review_count)
             
-            listing_data = {
-                "id": l.id, "title": l.title, "description": l.description,
-                "street_address": l.street_address, "city": l.city, "state": l.state, "pincode": l.pincode,
-                "propertyType": l.propertyType, "monthlyRent": l.monthlyRent, "securityDeposit": l.securityDeposit,
-                "bedrooms": l.bedrooms, "bathrooms": l.bathrooms, "seating": l.seating,
-                "area": l.area, "furnishing": l.furnishing, "amenities": l.amenities or [],
-                "image_urls": l.image_urls or [], "owner": serialize_owner(l.owner),
-                "availability_status": status
+            all_listings.append(listing_summary)
+
+            if review_count and review_count >= 1:
+                featured_listings.append(listing_summary)
+
+        # Sort the featured list by rating (highest first) and limit to top 5
+        featured_listings.sort(key=lambda x: x['average_rating'] or 0, reverse=True)
+        
+        return {
+            "success": True, 
+            "data": {
+                "featured": featured_listings[:5], # Return only the top 5 featured
+                "all_listings": all_listings
             }
-            result.append(listing_data)
-            
-        # --- IMPROVEMENT: Removed message for consistency ---
-        return {"success": True, "data": result}
-
+        }
 
 class ListingResource(Resource):
     def get(self, listing_id):
@@ -263,4 +307,5 @@ api.add_resource(ListingResource, "/listings/<int:listing_id>")
 api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
+
 
