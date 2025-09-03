@@ -93,7 +93,6 @@ class ListingCreate(Resource):
         db.session.add(listing)
         db.session.commit()
         
-        # --- THIS IS THE FIX ---
         # Create a simple, clean dictionary to send in the response.
         listing_data = {
             "id": listing.id,
@@ -110,7 +109,7 @@ class ListingList(Resource):
     def get(self):
         """
         Fetches all listings and separates them into 'featured' (top-rated)
-        and 'all_listings' categories.
+        and 'all_listings' categories using a smarter filtering rule.
         """
         today = date.today()
 
@@ -152,7 +151,8 @@ class ListingList(Resource):
             
             all_listings.append(listing_summary)
 
-            if review_count and review_count >= 1:
+            # A listing is "featured" if it has at least 2 reviews AND an average rating of 4.0 or higher.
+            if review_count and avg_rating and review_count >= 2 and avg_rating >= 4.0:
                 featured_listings.append(listing_summary)
 
         # Sort the featured list by rating (highest first) and limit to top 5
@@ -333,6 +333,7 @@ api.add_resource(ListingResource, "/listings/<int:listing_id>")
 api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
+
 
 
 
