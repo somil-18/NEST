@@ -280,24 +280,50 @@ class ReviewCreate(Resource):
         data = request.get_json()
         rating = data.get('rating')
         comment = data.get('comment')
-        if not rating or not (1 <= int(rating) <= 5):
-            return {"success": False, "message": "Rating must be between 1 and 5"}, 400
+
+        if rating is None:
+            return {"success": False, "message": "Rating is a required field"}, 400
+        
+        try:
+            rating_int = int(rating)
+            if not (1 <= rating_int <= 5):
+                return {"success": False, "message": "Rating must be an integer between 1 and 5"}, 400
+        except (ValueError, TypeError):
+            # This catches cases where rating is not a number (e.g., "hello")
+            return {"success": False, "message": "Rating must be a valid integer"}, 400
+
+        # --- This is the security check for completed appointments ---
         completed_booking = Booking.query.filter(
-            Booking.user_id == user_id, Booking.listing_id == listing_id,
-            Booking.status == 'Confirmed', Booking.appointment_date < date.today()
+            Booking.user_id == user_id, 
+            Booking.listing_id == listing_id,
+            Booking.status == 'Confirmed', 
+            Booking.appointment_date < date.today()
         ).first()
         if not completed_booking:
-            return {"success": False, "message": "You can only review after a completed appointment."}, 403
+            return {"success": False, "message": "You can only review listings after a completed appointment."}, 403
+
+        # This check prevents a user from reviewing the same listing twice.
         if Review.query.filter_by(user_id=user_id, listing_id=listing_id).first():
-            return {"success": False, "message": "You have already reviewed this listing."}, 409
-        new_review = Review(rating=rating, comment=comment, user_id=user_id, listing_id=listing_id)
+            return {"success": False, "message": "You have already submitted a review for this listing."}, 409
+
+        new_review = Review(
+            rating=rating_int, # Use the validated integer
+            comment=comment, 
+            user_id=user_id, 
+            listing_id=listing_id
+        )
         db.session.add(new_review)
         db.session.commit()
+
+        # Return the newly created review object
         review_data = {
-            "id": new_review.id, "author_username": new_review.author.username,
-            "rating": new_review.rating, "comment": new_review.comment,
+            "id": new_review.id, 
+            "author_username": new_review.author.username,
+            "rating": new_review.rating, 
+            "comment": new_review.comment,
             "created_at": new_review.created_at.isoformat()
         }
+        
         return {"success": True, "data": review_data, "message": "Review submitted successfully"}, 201
 
 
@@ -307,5 +333,6 @@ api.add_resource(ListingResource, "/listings/<int:listing_id>")
 api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
+
 
 
