@@ -240,7 +240,7 @@ class ReviewCreate(Resource):
             return {"success": False, "message": "Rating must be between 1 and 5"}, 400
         completed_booking = Booking.query.filter(
             Booking.user_id == user_id, Booking.listing_id == listing_id,
-            Booking.status == 'confirmed', Booking.appointment_date < date.today()
+            Booking.status == 'Confirmed', Booking.appointment_date < date.today()
         ).first()
         if not completed_booking:
             return {"success": False, "message": "You can only review after a completed appointment."}, 403
@@ -263,3 +263,4 @@ api.add_resource(ListingResource, "/listings/<int:listing_id>")
 api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
+
