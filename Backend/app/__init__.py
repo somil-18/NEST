@@ -30,14 +30,16 @@ def create_app(config_class=Config):
     from .routes.auth import auth_bp
     from .routes.listings import listings_bp
     from .routes.bookings import bookings_bp
-    from .routes.favorites import favorites_bp
     from .routes.owner import owner_bp
+    from .routes.favorites import favorites_bp
+    
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(listings_bp)
     app.register_blueprint(bookings_bp)
-    app.register_blueprint(favorites_bp)
     app.register_blueprint(owner_bp)
+    app.register_blueprint(favorites_bp)
+    
 
     
     with app.app_context():
@@ -45,4 +47,5 @@ def create_app(config_class=Config):
 
 
     return app
+
 
