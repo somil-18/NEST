@@ -193,19 +193,76 @@ class ListingList(Resource):
 
 # update or delete listings
 class ListingResource(Resource):
-    def get(self, listing_id):
+    # def get(self, listing_id):
+    #     listing = Listing.query.get_or_404(listing_id, description="Listing not found")
+    #     listing_data = {
+    #         "id": listing.id, "title": listing.title, "description": listing.description,
+    #         "street_address": listing.street_address, "city": listing.city, "state": listing.state, "pincode": listing.pincode,
+    #         "propertyType": listing.propertyType, "monthlyRent": listing.monthlyRent, "securityDeposit": listing.securityDeposit,
+    #         "bedrooms": listing.bedrooms, "bathrooms": listing.bathrooms, "seating": listing.seating,
+    #         "area": listing.area, "furnishing": listing.furnishing, "amenities": listing.amenities or [],
+    #         "image_urls": listing.image_urls or [], "owner": serialize_owner(listing.owner)
+    #     }
+    #     reviews_data = [{"id": r.id, "author_username": r.author.username, "rating": r.rating, 
+    #                     "comment": r.comment, "created_at": r.created_at.isoformat()} for r in listing.reviews]
+    #     listing_data["reviews"] = reviews_data
+    #     return {"success": True, "data": listing_data}
+        def get(self, listing_id):
+        """
+        Fetches a single listing's complete details, including its real-time status,
+        average rating, review count, and all of its reviews.
+        """
         listing = Listing.query.get_or_404(listing_id, description="Listing not found")
+        today = date.today()
+
+        # --- THIS IS THE NEW LOGIC ADDED TO THIS ENDPOINT ---
+
+        # 1. Calculate the real-time availability status for today
+        total_attendees_today = db.session.query(func.sum(Booking.attendees)).filter(
+            Booking.listing_id == listing.id,
+            Booking.appointment_date == today,
+            Booking.status.in_(['Confirmed', 'Pending'])
+        ).scalar() or 0
+        
+        status = "Booked" if listing.seating is not None and total_attendees_today >= listing.seating else "Available"
+
+        # 2. Calculate the average rating and review count
+        review_stats = db.session.query(
+            func.avg(Review.rating),
+            func.count(Review.id)
+        ).filter(Review.listing_id == listing.id).first()
+        
+        avg_rating, review_count = review_stats or (None, 0)
+        
+        # -----------------------------------------------------------
+
+        # Serialize the main listing data, now including the calculated fields
         listing_data = {
             "id": listing.id, "title": listing.title, "description": listing.description,
             "street_address": listing.street_address, "city": listing.city, "state": listing.state, "pincode": listing.pincode,
             "propertyType": listing.propertyType, "monthlyRent": listing.monthlyRent, "securityDeposit": listing.securityDeposit,
             "bedrooms": listing.bedrooms, "bathrooms": listing.bathrooms, "seating": listing.seating,
             "area": listing.area, "furnishing": listing.furnishing, "amenities": listing.amenities or [],
-            "image_urls": listing.image_urls or [], "owner": serialize_owner(listing.owner)
+            "image_urls": listing.image_urls or [], "owner": serialize_owner(listing.owner),
+            # --- ADDED THE MISSING FIELDS ---
+            "availability_status": status,
+            "average_rating": round(float(avg_rating), 2) if avg_rating else None,
+            "review_count": review_count
         }
-        reviews_data = [{"id": r.id, "author_username": r.author.username, "rating": r.rating, 
-                        "comment": r.comment, "created_at": r.created_at.isoformat()} for r in listing.reviews]
+
+        # Fetch and serialize all reviews for this listing (this part is correct)
+        reviews_data = []
+        for review in listing.reviews:
+            reviews_data.append({
+                "id": review.id,
+                "author_username": review.author.username,
+                "rating": review.rating,
+                "comment": review.comment,
+                "created_at": review.created_at.isoformat()
+            })
+        
         listing_data["reviews"] = reviews_data
+        
         return {"success": True, "data": listing_data}
     
     @jwt_required()
@@ -373,6 +430,7 @@ api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
+
 
 
 
