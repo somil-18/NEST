@@ -207,7 +207,8 @@ class ListingResource(Resource):
     #                     "comment": r.comment, "created_at": r.created_at.isoformat()} for r in listing.reviews]
     #     listing_data["reviews"] = reviews_data
     #     return {"success": True, "data": listing_data}
-        def get(self, listing_id):
+    
+    def get(self, listing_id):
         """
         Fetches a single listing's complete details, including its real-time status,
         average rating, review count, and all of its reviews.
