@@ -38,7 +38,7 @@ def serialize_owner(owner):
 #         "average_rating": round(float(avg_rating), 2) if avg_rating else None,
 #         "review_count": review_count or 0
 #     }
-def serialize_listing_for_list_view(listing, status, avg_rating, review_count):
+def serialize_listing_summary(listing, status, avg_rating, review_count):
     """
     Creates a complete dictionary of a listing's details for the main list view.
     """
@@ -373,6 +373,7 @@ api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
+
 
 
 
