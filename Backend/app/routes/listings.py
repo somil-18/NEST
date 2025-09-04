@@ -25,15 +25,42 @@ def serialize_owner(owner):
     }
 
 
-# listings summary
-def serialize_listing_summary(listing, status, avg_rating, review_count):
+# listings 
+# def serialize_listing_summary(listing, status, avg_rating, review_count):
+#     return {
+#         "id": listing.id,
+#         "title": listing.title,
+#         "monthlyRent": listing.monthlyRent,
+#         "city": listing.city,
+#         "state": listing.state,
+#         "main_image_url": listing.image_urls[0] if listing.image_urls else None,
+#         "availability_status": status,
+#         "average_rating": round(float(avg_rating), 2) if avg_rating else None,
+#         "review_count": review_count or 0
+#     }
+def serialize_listing_for_list_view(listing, status, avg_rating, review_count):
+    """
+    Creates a complete dictionary of a listing's details for the main list view.
+    """
     return {
         "id": listing.id,
         "title": listing.title,
-        "monthlyRent": listing.monthlyRent,
+        "description": listing.description,
+        "street_address": listing.street_address,
         "city": listing.city,
         "state": listing.state,
-        "main_image_url": listing.image_urls[0] if listing.image_urls else None,
+        "pincode": listing.pincode,
+        "propertyType": listing.propertyType,
+        "monthlyRent": listing.monthlyRent,
+        "securityDeposit": listing.securityDeposit,
+        "bedrooms": listing.bedrooms,
+        "bathrooms": listing.bathrooms,
+        "seating": listing.seating,
+        "area": listing.area,
+        "furnishing": listing.furnishing,
+        "amenities": listing.amenities or [],
+        "image_urls": listing.image_urls or [],
+        "owner": serialize_owner(listing.owner),
         "availability_status": status,
         "average_rating": round(float(avg_rating), 2) if avg_rating else None,
         "review_count": review_count or 0
@@ -346,6 +373,7 @@ api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
+
 
 
 
