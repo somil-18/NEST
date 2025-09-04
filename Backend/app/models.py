@@ -1,9 +1,8 @@
 from .extensions import db
-# from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy import JSON, func
 
 
-# This is our junction table for the many-to-many relationship.
+# junction table for the many-to-many relationship.
 favorites_association_table = db.Table('favorites_association',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
     db.Column('listing_id', db.Integer, db.ForeignKey('listing.id'), primary_key=True)
@@ -87,7 +86,7 @@ class Review(db.Model):
     
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     
-    # a nique constraint to prevent a user from reviewing the same listing multiple times.
+    # a unique constraint to prevent a user from reviewing the same listing multiple times.
     __table_args__ = (db.UniqueConstraint('user_id', 'listing_id', name='_user_listing_uc'),)
 
 
@@ -97,6 +96,7 @@ class TokenBlocklist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     jti = db.Column(db.String(36), nullable=False, index=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+
 
 
 
