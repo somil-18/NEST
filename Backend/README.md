@@ -70,7 +70,13 @@ role: Required. Must be either "user" or "owner".
   "success": true,
   "access_token": "string",
   "refresh_token": "string",
-  "role": "user or owner"
+   "data": {
+        "id": 1,
+        "username": "string",
+        "email": "string",
+        "mobile_no": "9103937527",
+        "role": "user"
+    }
 }
 ```
 - `401 Unauthorized` – Invalid credentials.
@@ -196,7 +202,8 @@ Authorization: Bearer <access_token>
         "mobile_no": "9876543210",
         "address": "123 Marine Drive, Mumbai, India",
         "gender": "Male",
-        "age": 28
+        "age": 28,
+        "image_url": "string"
     }
 }
 ```
@@ -345,28 +352,36 @@ Authorization: Bearer <access_token>
 ```json
 {
   "success": true,
-  "data": [
-    {
-    "success": true,
-    "data": [
-        {
-            "id": 1,
-            "title": "2 BHK Apartment",
-            // ... all listing fields
-            "owner": {
-                "id": 1,
-                "username": "Somil",
-                "mobile_no": "9876543210",
-                "gender": "Male",
-                "age": 30
-            },
-            "availability_status": "Available"
-        }
+  "data": {
+    "featured": [
+      {
+        "id": 1,
+        "title": "2 BHK",
+        "monthlyRent": 60000,
+        "city": "Solan",
+        "state": "Himachal Pradesh",
+        "main_image_url": "string",
+        "availability_status": "Available",
+        "average_rating": 4,
+        "review_count": 1
+      }
+    ],
+    "all_listings": [
+      {
+        "id": 2,
+        "title": "4 BHK",
+        "monthlyRent": 25000,
+        "city": "Solan",
+        "state": "Himachal Pradesh",
+        "main_image_url": "string",
+        "availability_status": "Available",
+        "average_rating": 2,
+        "review_count": 1
+      }
     ]
-}
-  ],
+  },
   "message": "Listings fetched successfully"
-}
+  }
 ```
 
 ---
@@ -533,7 +548,7 @@ Authorization: Bearer <access_token>
             "street_address": "123 Dreamvilla Rd",
             "city": "Solan",
             "state": "Himachal Pradesh",
-            "main_image_url": "[https://res.cloudinary.com/](https://res.cloudinary.com/)..."
+            "main_image_url": "[https://res.cloudinary.com/]"
         },
         "tenant": {
           "id": 2,
@@ -575,7 +590,7 @@ Authorization: Bearer <access_token>
                 "street_address": "Near Dreamvilla",
                 "city": "Solan",
                 "state": "Himachal Pradesh",
-                "main_image_url": "https://res.cloudinary.com/dwyabk2ek/image/upload/v1756751831/gwhtvfwnwb9iu0sefdbi.jpg"
+                "main_image_url": "[https://res.cloudinary.com/]"
             }
         }
     ]
@@ -611,7 +626,7 @@ Authorization: Bearer <access_token>
                 "street_address": "Near Dreamvilla",
                 "city": "Solan",
                 "state": "Himachal Pradesh",
-                "main_image_url": "https://res.cloudinary.com/dwyabk2ek/image/upload/v1756751831/gwhtvfwnwb9iu0sefdbi.jpg"
+                "main_image_url": "[https://res.cloudinary.com/]"
             },
             "tenant": {
                 "id": 2,
@@ -661,7 +676,7 @@ Authorization: Bearer <access_token>
                 "street_address": "Near Dreamvilla",
                 "city": "Solan",
                 "state": "Himachal Pradesh",
-                "main_image_url": "https://res.cloudinary.com/dwyabk2ek/image/upload/v1756751831/gwhtvfwnwb9iu0sefdbi.jpg"
+                "main_image_url": "[https://res.cloudinary.com/]"
             },
             "tenant": {
                 "id": 2,
@@ -731,7 +746,7 @@ Authorization: Bearer <access_token>
             "monthlyRent": 15000.0,
             "city": "Solan",
             "state": "Himachal Pradesh",
-            "main_image_url": "[https://res.cloudinary.com/](https://res.cloudinary.com/)..."
+            "main_image_url": "[https://res.cloudinary.com/]"
         }
     ]
 }
@@ -838,22 +853,22 @@ Once verified, the user can log in.
 
 ### Review Table
 
-| Column      | Type          | Constraints                                |
-|-------------|---------------|--------------------------------------------|
-| id          | Integer       | Primary Key, Auto-incrementing             |
-| rating         | Integer    | Required (Not Null) |
-| comment  | Text    | Optional (Nullable) |
-| user_id  | Integer      | Foreign Key → user.id, Required, Indexed |
-| listing_id  | Integer     | Foreign Key → listing.id, Required, Indexed |
-| created_at  | DateTime      | AAuto-timestamp (Server Default) |
+| Column      | Type       | Constraints                                 |
+|-------------|------------|---------------------------------------------|
+| id          | Integer    | Primary Key, Auto-incrementing              |
+| rating      | Integer    | Required (Not Null)                         |
+| comment     | Text       | Optional (Nullable)                         |
+| user_id     | Integer    | Foreign Key → user.id, Required, Indexed    |
+| listing_id  | Integer    | Foreign Key → listing.id, Required, Indexed |
+| created_at  | DateTime   | AAuto-timestamp (Server Default)            |
 
 ### Favorites Association Table
 - This is a simple "junction" table that exists only to create a bridge between users and listings. It has no extra data, only the two IDs required to link them.
 
-| Column      | Type          | Constraints                                |
-|-------------|---------------|--------------------------------------------|
-| user_id          | Integer       | Composite Primary Key, Foreign Key → user.id           |
-| listing_id       | Integer   | Composite Primary Key, Foreign Key → listing.id  |
+| Column      | Type     | Constraints                                      |
+|-------------|----------|--------------------------------------------------|
+| user_id     | Integer  | Composite Primary Key, Foreign Key → user.id     |
+| listing_id  | Integer  | Composite Primary Key, Foreign Key → listing.id  |
 
 ### TokenBlockList Table
 
