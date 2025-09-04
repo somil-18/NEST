@@ -4,16 +4,17 @@ from flask_restful import Api, Resource
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import func
 
+
 from ..extensions import db
 from ..models import Listing, Booking, User
 
-# Create Blueprint
+
 bookings_bp = Blueprint('bookings', __name__)
 api = Api(bookings_bp)
 
 
+# user summary
 def serialize_user_summary(user):
-    """Safely serializes public user information (for owner or tenant)."""
     if not user: return None
     return {
         "id": user.id,
@@ -24,8 +25,8 @@ def serialize_user_summary(user):
     }
 
 
+# listings summary
 def serialize_listing_summary(listing):
-    """Safely serializes summary listing information for a booking."""
     if not listing: return None
     return {
         "id": listing.id,
@@ -37,8 +38,8 @@ def serialize_listing_summary(listing):
     }
 
 
+# booking summary (owner)
 def serialize_booking(booking):
-    """Serializes a booking object into a full, nested dictionary."""
     if not booking: return None
     return {
         "id": booking.id,
@@ -46,15 +47,12 @@ def serialize_booking(booking):
         "attendees": booking.attendees,
         "status": booking.status,
         "listing": serialize_listing_summary(booking.listing),
-        "tenant": serialize_user_summary(booking.tenant) # The user who made the booking
+        "tenant": serialize_user_summary(booking.tenant) # user who made the booking
     }
 
 
+# booking summary (user)
 def serialize_booking_for_self(booking):
-    """
-    A special serializer for the /bookings/my endpoint.
-    It's the same as the main serializer but omits the redundant 'tenant' field.
-    """
     if not booking: return None
     return {
         "id": booking.id,
@@ -62,21 +60,21 @@ def serialize_booking_for_self(booking):
         "attendees": booking.attendees,
         "status": booking.status,
         "listing": serialize_listing_summary(booking.listing)
-        # The 'tenant' field is intentionally left out.
     }
 
+
+# create bookings
 class BookingCreate(Resource):
     @jwt_required()
     def post(self):
-        """Schedules a new appointment to view a listing."""
         user_id = int(get_jwt_identity())
         data = request.get_json()
         
         listing_id = data.get("listing_id")
         appointment_date_str = data.get("appointment_date")
-        attendees = data.get("attendees", 1) # Default to 1 attendee if not specified
+        attendees = data.get("attendees", 1) # default to 1 attendee if not specified
 
-        # --- Validations ---
+        # validations
         if not all([listing_id, appointment_date_str]):
             return {"success": False, "message": "Missing listing_id or appointment_date"}, 400
 
@@ -95,7 +93,7 @@ class BookingCreate(Resource):
         if listing.owner_id == user_id:
             return {"success": False, "message": "You cannot book an appointment for your own listing"}, 403
 
-        # --- New Availability Logic for Daily Capacity ---
+        # checking availability 
         total_attendees_on_day = db.session.query(func.sum(Booking.attendees)).filter(
             Booking.listing_id == listing_id,
             Booking.appointment_date == appointment_date,
@@ -121,10 +119,10 @@ class BookingCreate(Resource):
         return {"success": True, "data": serialize_booking(booking), "message": "Appointment scheduled, awaiting confirmation"}, 201
 
 
+# view bookings (user)
 class MyBookings(Resource):
     @jwt_required()
     def get(self):
-        """Fetches all appointments made by the current user."""
         user_id = int(get_jwt_identity())
         bookings = Booking.query.filter_by(user_id=user_id).all()
         
@@ -133,16 +131,14 @@ class MyBookings(Resource):
         return {"success": True, "data": result}, 200
 
 
+# view bookings (owner)
 class OwnerBookings(Resource):
     @jwt_required()
     def get(self):
-        """Fetches all appointments for listings owned by the current user."""
         user_id = int(get_jwt_identity())
         
-        # Subquery to get all listing IDs owned by the user
         owner_listing_ids = db.session.query(Listing.id).filter(Listing.owner_id == user_id)
-        
-        # Get all bookings where the listing_id is in the subquery result
+ 
         bookings = Booking.query.filter(Booking.listing_id.in_(owner_listing_ids)).all()
         
         result = [serialize_booking(b) for b in bookings]
@@ -150,10 +146,10 @@ class OwnerBookings(Resource):
         return {"success": True, "data": result}, 200
 
 
+# update bookings status (owner only) (confirmed or cancelled)
 class BookingUpdate(Resource):
     @jwt_required()
     def patch(self, booking_id):
-        """Updates the status of an appointment (owner only)."""
         user_id = int(get_jwt_identity())
         status = request.get_json().get("status")
 
@@ -170,10 +166,10 @@ class BookingUpdate(Resource):
         return {"success": True, "data": serialize_booking(booking), "message": f"Appointment status updated to {status.lower()}"}, 200
 
 
+# cancel booking (from user side)
 class BookingCancel(Resource):
     @jwt_required()
     def delete(self, booking_id):
-        """Cancels an appointment (booking creator only)."""
         user_id = int(get_jwt_identity())
         booking = Booking.query.get_or_404(booking_id, description="Booking not found")
 
@@ -185,9 +181,9 @@ class BookingCancel(Resource):
         return {"success": True, "message": "Appointment cancelled successfully"}, 200
 
 
-# --- API Endpoints (No changes needed here) ---
 api.add_resource(BookingCreate, "/bookings/create")
 api.add_resource(MyBookings, "/bookings/my")
 api.add_resource(OwnerBookings, "/bookings/owner")
 api.add_resource(BookingUpdate, "/bookings/<int:booking_id>")
 api.add_resource(BookingCancel, "/bookings/<int:booking_id>/cancel")
+
