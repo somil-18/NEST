@@ -7,7 +7,6 @@ def send_verification_email(mail, email):
     s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
     token = s.dumps(email, salt='email-confirm')
 
-    # link = url_for('auth.confirm_email', token=token, _external=True)
     frontend_url = current_app.config['FRONTEND_URL']
     link = f"{frontend_url}/verify-email?token={token}"
     
@@ -30,7 +29,6 @@ def send_password_reset_email(mail, email):
     s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
     token = s.dumps(email, salt='password-reset')
 
-    # link = url_for('auth.resetpassword', token=token, _external=True)
     frontend_url = current_app.config['FRONTEND_URL']
     link = f"{frontend_url}/reset-password?token={token}"
     
@@ -48,4 +46,5 @@ def confirm_password_reset_token(token, expiration=3600):
         return None
 
     return email
+
 
