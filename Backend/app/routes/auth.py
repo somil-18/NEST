@@ -1,4 +1,3 @@
-# --- Cleaned up and consolidated imports ---
 import os
 import json
 import re
@@ -10,26 +9,31 @@ from argon2.exceptions import VerifyMismatchError
 from sqlalchemy import or_
 import cloudinary.uploader
 
+
 from ..extensions import db, mail, ph, jwt
 from ..models import User, TokenBlocklist
 from ..utils.email_utils import send_verification_email, confirm_email_token, send_password_reset_email, confirm_password_reset_token
 
-# --- Image validation constants and helper function ---
+
+# image validation
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-MAX_CONTENT_LENGTH = 5 * 1024 * 1024 # 5 Megabytes
+MAX_CONTENT_LENGTH = 5 * 1024 * 1024 # 5 MB
 
 def allowed_file(filename):
     """Checks if a filename has an allowed extension."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Blueprint and API setup
+
+# blueprint and API setup
 auth_bp = Blueprint('auth', __name__)
 api = Api(auth_bp)
 
-# Regex patterns
+
+# regex patterns
 password_pattern = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$'
 email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 mobile_pattern = r"^[6-9]\d{9}$"
+
 
 def serialize_user_profile(user):
     if not user: return None
@@ -41,14 +45,16 @@ def serialize_user_profile(user):
         "role": user.role
     }
 
-# JWT Blocklist Checker
+
+# JWT blocklist checker
 @jwt.token_in_blocklist_loader
 def check_if_token_in_blocklist(jwt_header, jwt_payload):
     jti = jwt_payload["jti"]
     token = TokenBlocklist.query.filter_by(jti=jti).one_or_none()
     return token is not None
 
-# --- Standard Flask Routes ---
+
+# confirmation of links
 @auth_bp.route('/confirm/<token>')
 def confirm_email(token):
     email = confirm_email_token(token)
@@ -63,17 +69,19 @@ def confirm_email(token):
     db.session.commit()
     return {"success": True, "message": "Email verified successfully"}, 200
 
-# --- API Resource Classes ---
+
 @auth_bp.route('/')
 def index():
     """A simple welcome message for the root URL."""
     return {"message": "Hello World"}, 200
 
+# registration
 class UserRegistration(Resource):
     def post(self):
         data = request.get_json()
         username, email, password, mobile_no, role = data.get("username"), data.get("email"), data.get("password"), str(data.get("mobile_no")), data.get("role")
 
+        # validations
         if not all([username, email, password, mobile_no, role]):
             return {"success": False, "message": "Missing fields"}, 400
         if role.lower() not in ["user", "owner"]:
@@ -214,12 +222,14 @@ class UserProfileFetch(Resource):
         return {"success": True, "data": profile_data}
 
 
+# update profile
 class UserProfileUpdate(Resource):
     @jwt_required()
     def patch(self):
         user_id = int(get_jwt_identity())
         user = User.query.get_or_404(user_id, description="User not found")
 
+        # image validations
         if 'image' in request.files:
             file = request.files['image']
             if file and file.filename != '':
@@ -262,6 +272,7 @@ class UserProfileUpdate(Resource):
         return UserProfileFetch().get()
 
 
+# delete profile
 class UserProfileDelete(Resource):
     @jwt_required()
     def delete(self):
@@ -275,15 +286,17 @@ class UserProfileDelete(Resource):
         return '', 204
 
 
-# Register all API resources with their endpoints
 api.add_resource(UserRegistration, "/register")
 api.add_resource(UserLogin, "/login")
-api.add_resource(TokenRefresh, "/refresh")
 api.add_resource(ChangePassword, "/change-password")
 api.add_resource(ForgotPassword, "/forgot-password")
 api.add_resource(ResetPassword, "/reset-password/<string:token>")
+
+api.add_resource(TokenRefresh, "/refresh")
+
 api.add_resource(UserProfileFetch, "/profile")
 api.add_resource(UserProfileUpdate, "/profile")
 api.add_resource(UserProfileDelete, "/profile")
+
 
 
