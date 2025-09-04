@@ -18,7 +18,8 @@ def serialize_tenant_for_dashboard(user):
     return {
         "id": user.id,
         "username": user.username,
-        "mobile_no": user.mobile_no
+        "mobile_no": user.mobile_no,
+        "email": user.email # It's useful for an owner to have the tenant's email
     }
 
 def serialize_booking_for_dashboard(booking):
@@ -39,12 +40,12 @@ class OwnerDashboard(Resource):
     @jwt_required()
     def get(self):
         """
-        Gathers and returns all key metrics for an owner's dashboard.
+        Gathers and returns all key metrics for an owner's dashboard, including
+        a full history of all appointments.
         """
         user_id = int(get_jwt_identity())
         owner = User.query.get(user_id)
 
-        # Security Check: Ensure the user is an owner
         if not owner or owner.role.lower() != 'owner':
             return {"success": False, "message": "Access denied: Owner role required."}, 403
 
@@ -52,13 +53,10 @@ class OwnerDashboard(Resource):
         
         # --- Database Queries for Metrics ---
 
-        # 1. Get a list of all listing IDs owned by this user
         owner_listing_ids = db.session.query(Listing.id).filter(Listing.owner_id == user_id).scalar_subquery()
 
-        # 2. Calculate Total Listings
         total_listings = db.session.query(func.count(Listing.id)).filter(Listing.owner_id == user_id).scalar()
 
-        # 3. Calculate "Total Revenue" (sum of security deposits from past, confirmed appointments)
         total_revenue = db.session.query(func.sum(Listing.securityDeposit)).join(
             Booking, Booking.listing_id == Listing.id
         ).filter(
@@ -67,19 +65,18 @@ class OwnerDashboard(Resource):
             Booking.appointment_date < today
         ).scalar() or 0.0
 
-        # 4. Calculate Total Attendees Booked for Today
         total_attendees_today = db.session.query(func.sum(Booking.attendees)).filter(
             Booking.listing_id.in_(owner_listing_ids),
             Booking.appointment_date == today,
             Booking.status.in_(['Confirmed', 'Pending'])
         ).scalar() or 0
         
-        # 5. Get a list of all upcoming (today and future) appointments
-        upcoming_appointments = Booking.query.filter(
-            Booking.listing_id.in_(owner_listing_ids),
-            Booking.appointment_date >= today,
-            Booking.status.in_(['Confirmed', 'Pending'])
-        ).order_by(Booking.appointment_date.asc()).all()
+        # --- THIS IS THE NEW QUERY ---
+        # Get a list of ALL appointments (past, present, and future),
+        # ordered by the most recent appointment date first.
+        all_appointments = Booking.query.filter(
+            Booking.listing_id.in_(owner_listing_ids)
+        ).order_by(Booking.appointment_date.desc()).all()
 
         # --- Assemble the Final Response ---
         
@@ -89,7 +86,8 @@ class OwnerDashboard(Resource):
                 "total_attendees_today": total_attendees_today,
                 "total_revenue": round(total_revenue, 2)
             },
-            "upcoming_appointments": [serialize_booking_for_dashboard(b) for b in upcoming_appointments]
+            # --- THIS IS THE NEW DATA ---
+            "all_appointments": [serialize_booking_for_dashboard(b) for b in all_appointments]
         }
         
         return {"success": True, "data": dashboard_data}
