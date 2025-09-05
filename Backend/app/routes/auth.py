@@ -11,7 +11,8 @@ import cloudinary.uploader
 
 
 from ..extensions import db, mail, ph, jwt
-from ..models import User, TokenBlocklist
+from ..models import User, TokenBlocklist, Booking
+from ..routes.bookings import serialize_booking, serialize_booking_for_self
 from ..utils.email_utils import send_verification_email, confirm_email_token, send_password_reset_email, confirm_password_reset_token
 
 
@@ -22,6 +23,16 @@ MAX_CONTENT_LENGTH = 5 * 1024 * 1024 # 5 MB
 def allowed_file(filename):
     """Checks if a filename has an allowed extension."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def serialize_listing_for_profile(listing):
+    """Creates a compact summary of a listing for the owner's profile page."""
+    if not listing: return None
+    return {
+        "id": listing.id, "title": listing.title, "city": listing.city,
+        "state": listing.state, "monthlyRent": listing.monthlyRent,
+        "main_image_url": listing.image_urls[0] if listing.image_urls else None
+    }
 
 
 # blueprint and API setup
@@ -206,19 +217,40 @@ class ResetPassword(Resource):
 
 
 # profile
+
 class UserProfileFetch(Resource):
     @jwt_required()
     def get(self):
+        """
+        Fetches a complete user profile, including listings for owners
+        and appointments for both users and owners.
+        """
         user_id = get_jwt_identity()
-        user = User.query.get(user_id)
-        if not user: return {"success": False, "message": "User not found"}, 404
+        user = User.query.get_or_404(user_id)
 
+        # Start with the basic profile data
         profile_data = {
             "username": user.username, "email": user.email, "mobile_no": user.mobile_no,
             "role": user.role, "bio": user.bio, "address": user.address,
             "gender": user.gender, "age": user.age,
             "profile_image_url": user.profile_image_url
         }
+
+        if user.role.lower() == 'owner':
+            # For owners, get their listings...
+            owner_listings = user.listings
+            profile_data['my_listings'] = [serialize_listing_for_profile(l) for l in owner_listings]
+
+            # ...and get all appointments for those listings.
+            owner_listing_ids = [l.id for l in owner_listings]
+            received_appointments = Booking.query.filter(Booking.listing_id.in_(owner_listing_ids)).order_by(Booking.appointment_date.desc()).all()
+            profile_data['received_appointments'] = [serialize_booking(b) for b in received_appointments]
+
+        elif user.role.lower() == 'user':
+            # For regular users, get the appointments they have made.
+            my_appointments = user.bookings
+            profile_data['my_appointments'] = [serialize_booking_for_self(b) for b in my_appointments]
+        
         return {"success": True, "data": profile_data}
 
 
@@ -297,6 +329,7 @@ api.add_resource(TokenRefresh, "/refresh")
 api.add_resource(UserProfileFetch, "/profile")
 api.add_resource(UserProfileUpdate, "/profile")
 api.add_resource(UserProfileDelete, "/profile")
+
 
 
 
