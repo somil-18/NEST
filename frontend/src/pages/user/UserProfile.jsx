@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useFormik } from "formik";
 import {
   User,
@@ -9,80 +9,23 @@ import {
   Save,
   X,
   Calendar,
-  Home,
   AlertCircle,
   Camera,
-  CreditCard,
-  Star,
-  Clock,
-  CheckCircle,
-  XCircle,
-  DollarSign,
   Heart,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { colors } from "@/utils/colors";
 import { profileValidationSchema } from "@/yup/profileValidationSchema";
 import ChangePassword from "@/components/user/ChangePassword";
-
-// Sample user data
-const sampleUserData = {
-  name: "John Doe",
-  email: "john.doe@example.com",
-  phone: "9876543210",
-  address: "123 Main Street, Bandra West, Mumbai, Maharashtra 400050",
-  joinedDate: "2023-01-15",
-  avatar:
-    "https://ui-avatars.com/api/?name=John+Doe&background=3b82f6&color=fff&size=128",
-};
-
-// Sample booking data
-const sampleBookings = [
-  {
-    id: 1,
-    propertyTitle: "Luxury Studio Apartment",
-    propertyImage:
-      "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400",
-    location: "Bandra West, Mumbai",
-    checkIn: "2024-12-15",
-    checkOut: "2024-12-20",
-    totalAmount: 75000,
-    status: "confirmed",
-    bookingDate: "2024-11-20",
-    guests: 2,
-  },
-  {
-    id: 2,
-    propertyTitle: "Spacious 2BHK Flat",
-    propertyImage:
-      "https://images.unsplash.com/photo-1556020685-ae41abfc9365?w=400",
-    location: "Koramangala, Bangalore",
-    checkIn: "2025-01-10",
-    checkOut: "2025-01-15",
-    totalAmount: 90000,
-    status: "pending",
-    bookingDate: "2024-12-01",
-    guests: 3,
-  },
-  {
-    id: 3,
-    propertyTitle: "Premium PG Room",
-    propertyImage:
-      "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400",
-    location: "Sector 62, Noida",
-    checkIn: "2024-10-01",
-    checkOut: "2024-10-31",
-    totalAmount: 12000,
-    status: "completed",
-    bookingDate: "2024-09-15",
-    guests: 1,
-  },
-];
+import axios from "axios";
+import { API_URL } from "@/utils/constants";
+import AppointmentCard from "@/components/user/AppointmentCard";
+import { useNavigate } from "react-router-dom";
 
 // Form Field Component
 const FormField = ({
@@ -109,187 +52,136 @@ const FormField = ({
   </div>
 );
 
-// Booking Card Component
-const BookingCard = ({ booking }) => {
-  const statusColors = {
-    confirmed: "bg-green-500 text-white",
-    pending: "bg-yellow-500 text-white",
-    completed: "bg-blue-500 text-white",
-    cancelled: "bg-red-500 text-white",
-  };
-
-  const statusIcons = {
-    confirmed: <CheckCircle size={14} />,
-    pending: <Clock size={14} />,
-    completed: <CheckCircle size={14} />,
-    cancelled: <XCircle size={14} />,
-  };
-
-  return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 p-0">
-      <div className="flex flex-col sm:flex-row">
-        {/* Image Section */}
-        <div className="w-full sm:w-32 h-32 sm:h-auto flex-shrink-0">
-          <img
-            src={booking.propertyImage}
-            alt={booking.propertyTitle}
-            className="w-full h-full object-cover"
-          />
-        </div>
-
-        {/* Content Section */}
-        <div className="flex-1 p-4">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-            {/* Property Info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between mb-2">
-                <h3 className="font-semibold text-lg text-gray-800 truncate pr-2">
-                  {booking.propertyTitle}
-                </h3>
-                <Badge
-                  className={`${
-                    statusColors[booking.status]
-                  } border-0 flex items-center gap-1 flex-shrink-0`}
-                >
-                  {statusIcons[booking.status]}
-                  {booking.status.charAt(0).toUpperCase() +
-                    booking.status.slice(1)}
-                </Badge>
-              </div>
-
-              <div className="flex items-center gap-2 text-gray-600 mb-3">
-                <MapPin size={14} className="flex-shrink-0" />
-                <span className="text-sm truncate">{booking.location}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Booking Details - Horizontal on larger screens, stacked on mobile */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-            <div className="flex items-center gap-2">
-              <Calendar size={14} className="text-blue-500 flex-shrink-0" />
-              <div>
-                <span className="font-medium block sm:inline">Check-in:</span>
-                <p className="text-gray-600 truncate">
-                  {new Date(booking.checkIn).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Calendar size={14} className="text-orange-500 flex-shrink-0" />
-              <div>
-                <span className="font-medium block sm:inline">Check-out:</span>
-                <p className="text-gray-600 truncate">
-                  {new Date(booking.checkOut).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <User size={14} className="text-purple-500 flex-shrink-0" />
-              <div>
-                <span className="font-medium block sm:inline">Guests:</span>
-                <p className="text-gray-600">
-                  {booking.guests} guest{booking.guests > 1 ? "s" : ""}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <DollarSign size={14} className="text-green-500 flex-shrink-0" />
-              <div>
-                <span className="font-medium block sm:inline">Total:</span>
-                <p className="font-bold" style={{ color: colors.primary }}>
-                  ₹{booking.totalAmount.toLocaleString()}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Booking Date */}
-          <div className="mt-3 pt-3 border-t border-gray-100">
-            <div className="text-xs text-gray-500 flex items-center gap-1">
-              <Clock size={12} />
-              Booked on: {new Date(booking.bookingDate).toLocaleDateString()}
-            </div>
-          </div>
-        </div>
-      </div>
-    </Card>
-  );
-};
-
-// Updated Booking Section with improved header
-<div className="mt-12">
-  <Card className="shadow-lg border-0">
-    <CardHeader className="bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-t-lg p-4">
-      <CardTitle className="flex items-center gap-2">
-        <Calendar size={24} />
-        My Bookings ({sampleBookings.length})
-      </CardTitle>
-    </CardHeader>
-    <CardContent className="p-6">
-      {sampleBookings.length === 0 ? (
-        <div className="text-center py-12">
-          <Home size={48} className="mx-auto mb-4 text-gray-400" />
-          <h3 className="text-lg font-semibold mb-2 text-gray-700">
-            No bookings yet
-          </h3>
-          <p className="text-gray-500 mb-4">
-            Start exploring amazing properties to make your first booking!
-          </p>
-          <Button style={{ backgroundColor: colors.primary }}>
-            Browse Properties
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {sampleBookings.map((booking) => (
-            <BookingCard key={booking.id} booking={booking} />
-          ))}
-        </div>
-      )}
-    </CardContent>
-  </Card>
-</div>;
-
 // Main Profile Component
 export default function UserProfile() {
   const [editMode, setEditMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userData, setUserData] = useState(null);
+  const [appointments, setAppointments] = useState([]);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   const formik = useFormik({
-    initialValues: sampleUserData,
+    initialValues: {
+      username: userData?.username || "",
+      email: userData?.email || "",
+      mobile_no: userData?.mobile_no || "",
+      bio: userData?.bio || "",
+      address: userData?.address || "",
+      gender: userData?.gender || "",
+      age: userData?.age || "",
+    },
+    enableReinitialize: true,
     validationSchema: profileValidationSchema,
     onSubmit: async (values) => {
-      setIsSubmitting(true);
-
-      // Simulate API call
-      setTimeout(() => {
-        console.log("Profile updated:", values);
-        alert("Profile updated successfully!");
-        setEditMode(false);
-        setIsSubmitting(false);
-      }, 1500);
+      await handleSaveProfile(values);
     },
   });
+
+  // API call to save profile data
+  const handleSaveProfile = async (values) => {
+    console.log(values);
+    setIsSubmitting(true);
+    try {
+      const response = await axios.patch(`${API_URL}/profile`, values, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`, // if needed
+        }
+      });
+      
+      if (response.data?.success) {
+        // Update local state with new data
+        setUserData({ ...userData, ...values });
+        alert("Profile updated successfully!");
+        setEditMode(false);
+      } else {
+        throw new Error(response.data?.message || 'Update failed');
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      alert(error.response?.data?.message || "Failed to update profile. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle header save button click
+  const handleHeaderSaveClick = async () => {
+    if (formik.isValid) {
+      await handleSaveProfile(formik.values);
+    } else {
+      // Trigger validation to show errors
+      formik.setTouched({
+        username: true,
+        email: true,
+        mobile_no: true,
+        bio: true,
+        address: true,
+        gender: true,
+        age: true,
+      });
+    }
+  };
+
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(`${API_URL}/profile`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`, // if needed
+          }
+        });
+        console.log(response)
+        if (response.data?.success) {
+          setUserData(response.data.data);
+          setAppointments(response.data.data.my_appointments || []);
+        }
+      } catch (error) {
+        console.error("Error fetching user details:", error);
+        alert("Failed to fetch profile data. Please refresh the page.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUserDetails();
+  }, []);
 
   const handleCancelEdit = () => {
     formik.resetForm();
     setEditMode(false);
   };
 
-  // Calculate booking statistics
-  const bookingStats = {
-    total: sampleBookings.length,
-    confirmed: sampleBookings.filter((b) => b.status === "confirmed").length,
-    completed: sampleBookings.filter((b) => b.status === "completed").length,
-    totalSpent: sampleBookings
-      .filter((b) => b.status === "completed")
-      .reduce((sum, b) => sum + b.totalAmount, 0),
+  const getUserInitials = () => {
+    if (!userData?.username) return "U";
+    return userData.username
+      .split(" ")
+      .map((name) => name.charAt(0))
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
   };
+
+  // Calculate appointment statistics
+  const appointmentStats = {
+    total: appointments.length,
+    confirmed: appointments.filter((a) => a.status === "Confirmed").length,
+    pending: appointments.filter((a) => a.status === "Pending").length,
+    completed: appointments.filter((a) => a.status === "Completed").length,
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
@@ -297,6 +189,7 @@ export default function UserProfile() {
         isOpen={isPasswordModalOpen}
         onClose={() => setIsPasswordModalOpen(false)}
       />
+
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -312,7 +205,7 @@ export default function UserProfile() {
             </Button>
           </div>
           <p className="text-gray-600">
-            Manage your account information and view booking history
+            Manage your account information and view appointment history
           </p>
         </div>
 
@@ -338,24 +231,37 @@ export default function UserProfile() {
                         Cancel
                       </Button>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setEditMode(!editMode)}
-                      className="text-white hover:bg-white/20"
-                    >
-                      {editMode ? (
-                        <>
-                          <Save size={16} className="mr-2" />
-                          Save
-                        </>
-                      ) : (
-                        <>
-                          <Edit3 size={16} className="mr-2" />
-                          Edit
-                        </>
-                      )}
-                    </Button>
+                    {editMode ? (
+                      <Button
+                        onClick={handleHeaderSaveClick}
+                        disabled={isSubmitting}
+                        variant="ghost"
+                        size="sm"
+                        className="text-white hover:bg-white/20"
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save size={16} className="mr-2" />
+                            Save
+                          </>
+                        )}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditMode(true)}
+                        className="text-white hover:bg-white/20"
+                      >
+                        <Edit3 size={16} className="mr-2" />
+                        Edit
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardHeader>
@@ -365,18 +271,20 @@ export default function UserProfile() {
                   {/* Avatar Section */}
                   <div className="flex items-center gap-6 pb-6 border-b">
                     <Avatar className="w-24 h-24">
-                      <AvatarImage src={sampleUserData.avatar} />
-                      <AvatarFallback>{sampleUserData.name[0]}</AvatarFallback>
+                      <AvatarImage src={userData?.profile_image_url} />
+                      <AvatarFallback
+                        className="text-white text-2xl font-bold"
+                        style={{ backgroundColor: colors.primary }}
+                      >
+                        {getUserInitials()}
+                      </AvatarFallback>
                     </Avatar>
                     <div>
                       <h3 className="text-xl font-bold text-gray-800">
-                        {formik.values.name}
+                        {userData?.username || "User"}
                       </h3>
-                      <p className="text-sm text-gray-500">
-                        Member since{" "}
-                        {new Date(
-                          sampleUserData.joinedDate
-                        ).toLocaleDateString()}
+                      <p className="text-sm text-gray-500 capitalize">
+                        {userData?.role || "Member"} • {userData?.gender}, {userData?.age} years
                       </p>
                       {editMode && (
                         <Button variant="outline" size="sm" className="mt-2">
@@ -390,15 +298,15 @@ export default function UserProfile() {
                   {/* Form Fields */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
-                      label="Name"
+                      label="Username"
                       icon={<User size={16} />}
-                      error={formik.errors.name}
-                      touched={formik.touched.name}
+                      error={formik.errors.username}
+                      touched={formik.touched.username}
                       required
                     >
                       <Input
-                        name="name"
-                        value={formik.values.name}
+                        name="username"
+                        value={formik.values.username}
                         onChange={formik.handleChange}
                         onBlur={formik.handleBlur}
                         disabled={!editMode}
@@ -420,22 +328,20 @@ export default function UserProfile() {
                         onChange={formik.handleChange}
                         onBlur={formik.handleBlur}
                         disabled={true}
-                        className={
-                          !editMode ? "bg-gray-50" : "cursor-not-allowed"
-                        }
+                        className="bg-gray-50 cursor-not-allowed"
                       />
                     </FormField>
 
                     <FormField
-                      label="Phone Number"
+                      label="Mobile Number"
                       icon={<Phone size={16} />}
-                      error={formik.errors.phone}
-                      touched={formik.touched.phone}
+                      error={formik.errors.mobile_no}
+                      touched={formik.touched.mobile_no}
                       required
                     >
                       <Input
-                        name="phone"
-                        value={formik.values.phone}
+                        name="mobile_no"
+                        value={formik.values.mobile_no}
                         onChange={formik.handleChange}
                         onBlur={formik.handleBlur}
                         disabled={!editMode}
@@ -443,14 +349,73 @@ export default function UserProfile() {
                         maxLength={10}
                       />
                     </FormField>
+
+                    <FormField
+                      label="Gender"
+                      icon={<Users size={16} />}
+                      error={formik.errors.gender}
+                      touched={formik.touched.gender}
+                    >
+                      <select
+                        name="gender"
+                        value={formik.values.gender}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        disabled={!editMode}
+                        className={`w-full p-2 border rounded-md ${
+                          !editMode ? "bg-gray-50" : ""
+                        }`}
+                      >
+                        <option value="">Select Gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </FormField>
+
+                    <FormField
+                      label="Age"
+                      icon={<Calendar size={16} />}
+                      error={formik.errors.age}
+                      touched={formik.touched.age}
+                    >
+                      <Input
+                        name="age"
+                        type="number"
+                        value={formik.values.age}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        disabled={!editMode}
+                        className={!editMode ? "bg-gray-50" : ""}
+                        min="18"
+                        max="100"
+                      />
+                    </FormField>
                   </div>
+
+                  <FormField
+                    label="Bio"
+                    icon={<User size={16} />}
+                    error={formik.errors.bio}
+                    touched={formik.touched.bio}
+                  >
+                    <Textarea
+                      name="bio"
+                      value={formik.values.bio}
+                      onChange={formik.handleChange}
+                      onBlur={formik.handleBlur}
+                      disabled={!editMode}
+                      className={!editMode ? "bg-gray-50" : ""}
+                      rows={3}
+                      placeholder="Tell us about yourself..."
+                    />
+                  </FormField>
 
                   <FormField
                     label="Address"
                     icon={<MapPin size={16} />}
                     error={formik.errors.address}
                     touched={formik.touched.address}
-                    required
                   >
                     <Textarea
                       name="address"
@@ -460,9 +425,11 @@ export default function UserProfile() {
                       disabled={!editMode}
                       className={!editMode ? "bg-gray-50" : ""}
                       rows={3}
+                      placeholder="Enter your address..."
                     />
                   </FormField>
 
+                  {/* Bottom Save Button */}
                   {editMode && (
                     <div className="flex justify-end pt-4 border-t">
                       <Button
@@ -491,51 +458,46 @@ export default function UserProfile() {
 
           {/* Sidebar Stats */}
           <div className="space-y-6">
-            {/* Booking Stats */}
+            {/* Appointment Stats */}
             <Card className="shadow-lg border-0 p-0">
               <CardHeader className="bg-gradient-to-r p-2 flex items-center from-green-500 to-teal-600 text-white rounded-t-lg">
                 <CardTitle className="flex items-center gap-2">
-                  <Home size={20} />
-                  Booking Stats
+                  <Calendar size={20} />
+                  Appointment Stats
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-6 py-4 space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Total Bookings</span>
+                  <span className="text-gray-600">Total Appointments</span>
                   <span
                     className="font-bold text-2xl"
                     style={{ color: colors.primary }}
                   >
-                    {bookingStats.total}
+                    {appointmentStats.total}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Confirmed</span>
-                  <span className="font-semibold text-blue-600">
-                    {bookingStats.confirmed}
+                  <span className="font-semibold text-green-600">
+                    {appointmentStats.confirmed}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Pending</span>
+                  <span className="font-semibold text-yellow-600">
+                    {appointmentStats.pending}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Completed</span>
-                  <span className="font-semibold text-green-600">
-                    {bookingStats.completed}
+                  <span className="font-semibold text-blue-600">
+                    {appointmentStats.completed}
                   </span>
-                </div>
-                <div className="pt-4 border-t">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Total Spent</span>
-                    <span
-                      className="font-bold text-lg"
-                      style={{ color: colors.primary }}
-                    >
-                      ₹{bookingStats.totalSpent.toLocaleString()}
-                    </span>
-                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Booking Stats */}
+            {/* Favourites Card */}
             <Card className="shadow-lg border-0 p-0">
               <CardHeader className="bg-gradient-to-r p-2 flex items-center from-pink-500 to-red-600 text-white rounded-t-lg">
                 <CardTitle className="flex items-center gap-2">
@@ -544,39 +506,7 @@ export default function UserProfile() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pb-5 flex items-center justify-center">
-                {/* <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Total Bookings</span>
-                  <span
-                    className="font-bold text-2xl"
-                    style={{ color: colors.primary }}
-                  >
-                    {bookingStats.total}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Confirmed</span>
-                  <span className="font-semibold text-blue-600">
-                    {bookingStats.confirmed}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Completed</span>
-                  <span className="font-semibold text-green-600">
-                    {bookingStats.completed}
-                  </span>
-                </div>
-                <div className="pt-4 border-t">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Total Spent</span>
-                    <span
-                      className="font-bold text-lg"
-                      style={{ color: colors.primary }}
-                    >
-                      ₹{bookingStats.totalSpent.toLocaleString()}
-                    </span>
-                  </div>
-                </div> */}
-                <Button style={{ backgroundColor: colors.primary }}>
+                <Button style={{ backgroundColor: colors.primary }} onClick={() => navigate('/user/favourites')}>
                   Go to favourites
                 </Button>
               </CardContent>
@@ -584,25 +514,24 @@ export default function UserProfile() {
           </div>
         </div>
 
-        {/* Booking History */}
+        {/* Appointment History */}
         <div className="mt-12">
           <Card className="shadow-lg border-0 p-0">
             <CardHeader className="bg-gradient-to-r p-2 flex items-center from-orange-500 to-red-600 text-white rounded-t-lg">
               <CardTitle className="flex items-center gap-2">
                 <Calendar size={24} />
-                My Bookings ({sampleBookings.length})
+                My Appointments ({appointments.length})
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              {sampleBookings.length === 0 ? (
+              {appointments.length === 0 ? (
                 <div className="text-center py-12">
-                  <Home size={48} className="mx-auto mb-4 text-gray-400" />
+                  <Calendar size={48} className="mx-auto mb-4 text-gray-400" />
                   <h3 className="text-lg font-semibold mb-2 text-gray-700">
-                    No bookings yet
+                    No appointments yet
                   </h3>
                   <p className="text-gray-500 mb-4">
-                    Start exploring amazing properties to make your first
-                    booking!
+                    Start exploring properties and book appointments!
                   </p>
                   <Button style={{ backgroundColor: colors.primary }}>
                     Browse Properties
@@ -610,8 +539,11 @@ export default function UserProfile() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {sampleBookings.map((booking) => (
-                    <BookingCard key={booking.id} booking={booking} />
+                  {appointments.map((appointment) => (
+                    <AppointmentCard
+                      key={appointment.id}
+                      appointment={appointment}
+                    />
                   ))}
                 </div>
               )}

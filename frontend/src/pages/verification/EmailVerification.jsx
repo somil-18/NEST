@@ -1,59 +1,14 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-/* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from "react";
-import {
-  useSearchParams,
-  useNavigate,
-  Link,
-  useParams,
-} from "react-router-dom";
-import {
-  CheckCircle,
-  XCircle,
-  Mail,
-  ArrowLeft,
-  Loader2,
-  RotateCcw,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Link, useParams } from "react-router-dom";
+import { Mail } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { colors } from "@/utils/colors";
 import LoadingState from "@/components/verification/LoadingState";
 import ErrorState from "@/components/verification/ErrorState";
 import SuccessState from "@/components/verification/SuccessState";
-
-// Simulate API call function (replace with actual API call)
-const verifyEmailToken = async (token) => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      // Demo logic - replace with actual API call
-      if (token === "invalid_token" || token === "expired_token") {
-        reject({
-          status: "error",
-          message:
-            token === "expired_token"
-              ? "Verification link has expired. Please request a new one."
-              : "Invalid verification token. Please check the link and try again.",
-        });
-      } else if (token && token.length > 10) {
-        resolve({
-          status: "success",
-          message: "Email verified successfully! Your account is now active.",
-          user: {
-            email: "user@example.com",
-            name: "John Doe",
-          },
-        });
-      } else {
-        reject({
-          status: "error",
-          message: "Invalid or missing verification token.",
-        });
-      }
-    }, 2000); // 2 second delay to simulate network request
-  });
-};
+import axios from "axios";
+import { API_URL } from "@/utils/constants";
 
 // Main Email Verification Component
 export default function EmailVerification() {
@@ -76,21 +31,12 @@ export default function EmailVerification() {
     setVerificationMessage("");
 
     try {
-      // Replace this with your actual API call
-      // const response = await fetch(`/api/verify-email?token=${token}`, {
-      //   method: 'GET',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      // });
-      // const data = await response.json();
-
-      // Demo API call
-      const data = await verifyEmailToken(token);
+      const response = await axios.post(`${API_URL}/reset-password/${token}`, {});
+      console.log(response);
 
       setVerificationStatus("success");
-      setVerificationMessage(data.message);
-      setUserData(data.user);
+      setVerificationMessage(response.data.message);
+      setUserData(response.data.user);
 
       // Optional: Store verification status in localStorage or context
       localStorage.setItem("emailVerified", "true");

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useFormik } from "formik";
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
@@ -9,23 +9,34 @@ import {
   registrationInitialValues,
   registrationValidationSchema,
 } from "@/yup/register";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { API_URL } from "@/utils/constants";
 
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (user) {
+      navigate("/");
+    }
+  }, [navigate]);
 
   const formik = useFormik({
     initialValues: registrationInitialValues,
     validationSchema: registrationValidationSchema,
     onSubmit: async (values) => {
       console.log("Form Values:", values);
+      setLoading(true);
       try {
         const response = await axios.post(`${API_URL}/register`, values);
         console.log(response);
       } catch (error) {
         console.log(error);
+      } finally {
+        setLoading(false);
       }
     },
   });
@@ -329,6 +340,7 @@ export default function Register() {
           {/* Submit Button */}
           <Button
             type="submit"
+            disabled={loading}
             className="w-full py-3 rounded-md font-semibold text-white text-lg transition-colors duration-200"
             style={{ backgroundColor: colors.primary }}
             onMouseEnter={(e) =>
@@ -338,7 +350,7 @@ export default function Register() {
               (e.currentTarget.style.backgroundColor = colors.primary)
             }
           >
-            Create Account
+            {loading ? "Creating Account..." : "Create Account"}
           </Button>
         </form>
 

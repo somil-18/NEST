@@ -11,14 +11,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertCircle, Eye, EyeOff, Lock, Check, X, Shield } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, Lock, Check, Shield } from "lucide-react";
 import { colors } from "@/utils/colors";
+import { toast } from "sonner";
+import axios from "axios";
+import { API_URL } from "@/utils/constants";
 
-// Validation Schema
+// Validation Schema with correct field names
 const changePasswordValidationSchema = Yup.object({
-  currentPassword: Yup.string().required("Current password is required"),
+  old_password: Yup.string().required("Current password is required"),
 
-  newPassword: Yup.string()
+  new_password: Yup.string()
     .required("New password is required")
     .min(8, "Password must be at least 8 characters")
     .matches(/(?=.*[a-z])/, "Must contain at least one lowercase letter")
@@ -26,12 +29,12 @@ const changePasswordValidationSchema = Yup.object({
     .matches(/(?=.*\d)/, "Must contain at least one number")
     .matches(/(?=.*[@$!%*?&])/, "Must contain at least one special character")
     .notOneOf(
-      [Yup.ref("currentPassword")],
+      [Yup.ref("old_password")],
       "New password must be different from current password"
     ),
 
-  confirmPassword: Yup.string()
-    .oneOf([Yup.ref("newPassword"), null], "Passwords must match")
+  confirm_password: Yup.string()
+    .oneOf([Yup.ref("new_password"), null], "Passwords must match")
     .required("Please confirm your new password"),
 });
 
@@ -150,7 +153,7 @@ const PasswordField = ({
         <button
           type="button"
           onClick={() => setShowPassword(!showPassword)}
-          className="absolute inset-y-0 right-0 pr-3 flex items-center"
+          className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer"
         >
           {showPassword ? (
             <EyeOff size={16} className="text-gray-400 hover:text-gray-600" />
@@ -176,50 +179,41 @@ export default function ChangePassword({ isOpen, onClose }) {
 
   const formik = useFormik({
     initialValues: {
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
+      old_password: "",
+      new_password: "",
+      confirm_password: "",
     },
     validationSchema: changePasswordValidationSchema,
     onSubmit: async (values, { resetForm }) => {
       setIsSubmitting(true);
 
       try {
-        // Simulate API call - Replace with actual API endpoint
-        // const response = await fetch('/api/change-password', {
-        //   method: 'POST',
-        //   headers: {
-        //     'Content-Type': 'application/json',
-        //     'Authorization': `Bearer ${authToken}`
-        //   },
-        //   body: JSON.stringify({
-        //     currentPassword: values.currentPassword,
-        //     newPassword: values.newPassword
-        //   })
-        // });
+        const response = await axios.post(`${API_URL}/change-password`, {
+          old_password: values.old_password,
+          new_password: values.new_password,
+        });
+        console.log(response);
 
-        // if (!response.ok) {
-        //   throw new Error('Failed to change password');
-        // }
-
-        // Demo simulation
-        setTimeout(() => {
-          console.log("Password change request:", {
-            currentPassword: values.currentPassword,
-            newPassword: values.newPassword,
-          });
-
-          // Reset form and close modal
+        if (response.data?.success) {
+          toast.success("🎉 Password changed successfully!");
           resetForm();
-          setIsSubmitting(false);
           onClose();
-
-          alert("Password changed successfully! Please log in again.");
-        }, 2000);
+        } else {
+          toast.error("❌ Failed to change password", {
+            description:
+              response.data?.message ||
+              "Please check your current password and try again",
+          });
+        }
       } catch (error) {
         console.error("Password change error:", error);
+        const errorMessage =
+          error.response?.data?.message || "An unexpected error occurred";
+        toast.error("❌ Password change failed", {
+          description: errorMessage,
+        });
+      } finally {
         setIsSubmitting(false);
-        alert("Failed to change password. Please try again.");
       }
     },
   });
@@ -256,35 +250,35 @@ export default function ChangePassword({ isOpen, onClose }) {
         <form onSubmit={formik.handleSubmit} className="space-y-6">
           <PasswordField
             label="Current Password"
-            name="currentPassword"
-            value={formik.values.currentPassword}
+            name="old_password"
+            value={formik.values.old_password}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
-            error={formik.errors.currentPassword}
-            touched={formik.touched.currentPassword}
+            error={formik.errors.old_password}
+            touched={formik.touched.old_password}
             placeholder="Enter your current password"
           />
 
           <PasswordField
             label="New Password"
-            name="newPassword"
-            value={formik.values.newPassword}
+            name="new_password"
+            value={formik.values.new_password}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
-            error={formik.errors.newPassword}
-            touched={formik.touched.newPassword}
+            error={formik.errors.new_password}
+            touched={formik.touched.new_password}
             placeholder="Enter your new password"
             showStrengthIndicator={true}
           />
 
           <PasswordField
             label="Confirm New Password"
-            name="confirmPassword"
-            value={formik.values.confirmPassword}
+            name="confirm_password"
+            value={formik.values.confirm_password}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
-            error={formik.errors.confirmPassword}
-            touched={formik.touched.confirmPassword}
+            error={formik.errors.confirm_password}
+            touched={formik.touched.confirm_password}
             placeholder="Confirm your new password"
           />
 
@@ -304,7 +298,7 @@ export default function ChangePassword({ isOpen, onClose }) {
                 disabled={
                   !formik.isValid || formik.isSubmitting || isSubmitting
                 }
-                className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
+                className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white cursor-pointer"
               >
                 {isSubmitting ? (
                   <div className="flex items-center gap-2">

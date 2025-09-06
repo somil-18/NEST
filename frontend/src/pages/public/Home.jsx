@@ -1,76 +1,74 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Search, MapPin, ChevronLeft, ChevronRight, X } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Search,
+  MapPin,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Star,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { colors } from "@/utils/colors";
+import { toast } from "sonner";
 import RoomCard from "@/components/public/home/RoomCard";
 import AnimatedCTA from "@/components/public/home/AnimatedCTA";
-
-// Sample room data
-const sampleRooms = [
-  {
-    id: 1,
-    title: "Cozy Studio Apartment",
-    description: "Modern furnished studio with all amenities in prime location",
-    price: 12000,
-    image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400",
-    location: "Bandra West, Mumbai",
-    rating: 4.5,
-    amenities: ["Wi-Fi", "AC", "Kitchen"],
-  },
-  {
-    id: 2,
-    title: "Spacious 2BHK Flat",
-    description:
-      "Well-ventilated flat with modern furniture and great connectivity",
-    price: 18000,
-    image: "https://images.unsplash.com/photo-1556020685-ae41abfc9365?w=400",
-    location: "Koramangala, Bangalore",
-    rating: 4.8,
-    amenities: ["Wi-Fi", "Parking", "Security"],
-  },
-  {
-    id: 3,
-    title: "Premium PG Room",
-    description: "Luxury PG with all meals included and housekeeping services",
-    price: 8500,
-    image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400",
-    location: "Sector 62, Noida",
-    rating: 4.2,
-    amenities: ["Wi-Fi", "Meals", "Laundry"],
-  },
-  {
-    id: 4,
-    title: "Modern Shared Room",
-    description: "Shared accommodation with professional roommates",
-    price: 6000,
-    image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400",
-    location: "Whitefield, Bangalore",
-    rating: 4.0,
-    amenities: ["Wi-Fi", "AC", "Kitchen"],
-  },
-  {
-    id: 5,
-    title: "Executive Studio",
-    description: "Premium studio apartment with concierge services",
-    price: 22000,
-    image: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=400",
-    location: "Powai, Mumbai",
-    rating: 4.9,
-    amenities: ["Wi-Fi", "Gym", "Pool"],
-  },
-];
+import axios from "axios";
+import { API_URL } from "@/utils/constants";
 
 // Main Home Component
 export default function Home() {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [rooms, setRooms] = useState([]);
   const sliderRef = useRef(null);
   const searchInputRef = useRef(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchListings = async () => {
+      try {
+        setIsLoading(true);
+        const response = await axios.get(`${API_URL}/listings`);
+
+        // Filter listings with rating above 3.5 and sort by rating (descending)
+        const allListings = response.data?.data?.all_listings || [];
+        const filteredRooms = allListings;
+        // .filter(room => room.average_rating > 0)
+        // .sort((a, b) => b.average_rating - a.average_rating)
+        // .slice(0, 10); // Get top 10
+
+        setRooms(filteredRooms);
+        console.log(`Loaded ${filteredRooms.length} top-rated listings`);
+      } catch (error) {
+        console.error("Error fetching listings:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchListings();
+  }, []);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  const scrollSlider = (direction) => {
+    if (sliderRef.current) {
+      const scrollAmount = 350; // Increased for better scrolling
+      sliderRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
 
   const activateSearch = () => {
     setIsSearchActive(true);
-    // Focus the input after animation
     setTimeout(() => {
       if (searchInputRef.current) {
         searchInputRef.current.focus();
@@ -83,14 +81,53 @@ export default function Home() {
     setSearchQuery("");
   };
 
-  // Handle click outside search area
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {
       deactivateSearch();
     }
   };
 
-  // Handle escape key
+  // Handle search submission
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+
+    if (!searchQuery.trim()) {
+      toast.error("Please enter a location to search");
+      return;
+    }
+
+    setIsSearching(true);
+
+    // Add slight delay for better UX
+    setTimeout(() => {
+      // Navigate to listings with location parameter
+      navigate(`/listings?location=${encodeURIComponent(searchQuery.trim())}`);
+      setIsSearching(false);
+      deactivateSearch(); // Close search overlay
+    }, 300);
+  };
+
+  // Handle quick search from suggestions
+  const handleQuickSearch = (city) => {
+    if (isSearching) return;
+
+    setIsSearching(true);
+    setSearchQuery(city);
+
+    setTimeout(() => {
+      navigate(`/listings?location=${encodeURIComponent(city)}`);
+      setIsSearching(false);
+      deactivateSearch();
+    }, 300);
+  };
+
+  // Handle Enter key press
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleSearchSubmit(e);
+    }
+  };
+
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === "Escape" && isSearchActive) {
@@ -110,16 +147,6 @@ export default function Home() {
       document.body.style.overflow = "unset";
     };
   }, [isSearchActive]);
-
-  const scrollSlider = (direction) => {
-    if (sliderRef.current) {
-      const scrollAmount = 320;
-      sliderRef.current.scrollBy({
-        left: direction === "left" ? -scrollAmount : scrollAmount,
-        behavior: "smooth",
-      });
-    }
-  };
 
   return (
     <div className="relative">
@@ -156,8 +183,8 @@ export default function Home() {
               </span>
             </h1>
             <p className="text-xl md:text-2xl mb-12 max-w-2xl mx-auto">
-              Discover comfortable, affordable, and verified PG accommodations
-              in your preferred location
+              Discover comfortable, affordable, and verified accommodations in
+              your preferred location
             </p>
 
             {/* Initial Search Bar */}
@@ -193,114 +220,221 @@ export default function Home() {
             onClick={handleBackdropClick}
           >
             <div className="w-full max-w-2xl">
-              {/* Search Input */}
-              <div className="relative mb-6">
-                <div className="absolute inset-y-0 z-1 left-4 flex items-center pointer-events-none">
-                  <Search size={24} style={{ color: colors.primary }} />
+              {/* Search Form */}
+              <form onSubmit={handleSearchSubmit} className="mb-6">
+                <div className="relative mb-4">
+                  <div className="absolute inset-y-0 z-1 left-4 flex items-center pointer-events-none">
+                    <Search size={24} style={{ color: colors.primary }} />
+                  </div>
+                  <Input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Search by street, city, area, or pincode..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="w-full pl-14 pr-14 py-6 text-xl rounded-2xl border-2 shadow-2xl bg-white/95 backdrop-blur-sm"
+                    style={{
+                      borderColor: colors.primary,
+                      fontSize: "18px",
+                    }}
+                    disabled={isSearching}
+                  />
+                  <button
+                    type="button"
+                    onClick={deactivateSearch}
+                    className="absolute inset-y-0 right-4 flex items-center text-gray-400 cursor-pointer hover:text-gray-600 transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
                 </div>
-                <Input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search by city, area, or pincode..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-14 pr-14 py-6 text-xl rounded-2xl border-2 shadow-2xl bg-white/95 backdrop-blur-sm"
-                  style={{
-                    borderColor: colors.primary,
-                    fontSize: "18px",
-                  }}
-                />
-                <button
-                  onClick={deactivateSearch}
-                  className="absolute inset-y-0 right-4 flex items-center text-gray-400 cursor-pointer hover:text-gray-600 transition-colors"
+
+                {/* Search Button */}
+                <Button
+                  type="submit"
+                  disabled={isSearching || !searchQuery.trim()}
+                  className="w-full py-4 text-lg font-semibold text-white rounded-2xl transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl"
+                  style={{ backgroundColor: colors.primary }}
                 >
-                  <X size={24} />
-                </button>
-              </div>
+                  {isSearching ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Searching...
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2">
+                      <Search size={20} />
+                      Search Properties
+                    </div>
+                  )}
+                </Button>
+              </form>
 
               {/* Search Suggestions/Results */}
-              {searchQuery && (
-                <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-4 space-y-2">
-                  <div className="text-sm font-medium text-gray-500 px-3 py-2">
-                    Popular searches
-                  </div>
-                  {[
-                    "Mumbai, Maharashtra",
-                    "Bangalore, Karnataka",
-                    "Delhi, NCR",
-                    "Pune, Maharashtra",
-                    "Hyderabad, Telangana",
-                  ]
-                    .filter((city) =>
-                      city.toLowerCase().includes(searchQuery.toLowerCase())
-                    )
-                    .map((city, index) => (
-                      <button
-                        key={index}
-                        className="w-full text-left px-4 py-3 rounded-xl hover:bg-white/80 transition-colors flex items-center gap-3"
-                        onClick={() => {
-                          setSearchQuery(city);
-                          // Handle search logic here
-                        }}
-                      >
-                        <MapPin size={16} style={{ color: colors.primary }} />
-                        <span style={{ color: colors.dark }}>{city}</span>
-                      </button>
-                    ))}
+              <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-4 space-y-2">
+                <div className="text-sm font-medium text-gray-500 px-3 py-2">
+                  {!searchQuery
+                    ? "Popular Locations"
+                    : `Suggestions for "${searchQuery}"`}
                 </div>
-              )}
+                {[
+                  "Shoolini University,",
+                  "Chandigarh University",
+                  "LPU",
+                  "Flame University",
+                  "Azim Premji University",
+                  "IIT Mandi",
+                ]
+                  .filter(
+                    (city) =>
+                      !searchQuery ||
+                      city.toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                  .map((city, index) => (
+                    <button
+                      key={index}
+                      className="w-full text-left px-4 py-3 rounded-xl hover:bg-white/80 transition-colors flex items-center gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => handleQuickSearch(city)}
+                      disabled={isSearching}
+                    >
+                      <MapPin size={16} style={{ color: colors.primary }} />
+                      <span style={{ color: colors.dark }}>{city}</span>
+                    </button>
+                  ))}
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Room Listings Section */}
+      {/* Featured Properties Section */}
       <section className="py-16 px-6 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2
-                className="text-4xl font-bold mb-2"
-                style={{ color: colors.dark }}
+            <div className="w-full">
+              <div className="flex items-center justify-between">
+                <h2
+                  className="text-2xl sm:text-3xl font-bold mb-2"
+                  style={{ color: colors.dark }}
+                >
+                  Top Rated Properties
+                </h2>
+                {/* Slider Controls */}
+                {rooms.length > 0 && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => scrollSlider("left")}
+                      className="p-3 rounded-full hover:shadow-md transition-all cursor-pointer"
+                    >
+                      <ChevronLeft size={20} />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => scrollSlider("right")}
+                      className="p-3 rounded-full hover:shadow-md transition-all cursor-pointer"
+                    >
+                      <ChevronRight size={20} />
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <p
+                className="hidden sm:block text-sm sm:text-lg mb-4"
+                style={{ color: colors.muted }}
               >
-                Featured Properties
-              </h2>
-              <p className="text-lg" style={{ color: colors.muted }}>
-                Handpicked accommodations in your area
+                Handpicked accommodations with ratings above 3.5 stars
               </p>
-            </div>
-
-            {/* Slider Controls */}
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => scrollSlider("left")}
-                className="p-2 rounded-full"
-              >
-                <ChevronLeft size={16} />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => scrollSlider("right")}
-                className="p-2 rounded-full"
-              >
-                <ChevronRight size={16} />
-              </Button>
+              {rooms.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Badge
+                    style={{
+                      backgroundColor: colors.lightPrimary,
+                      color: colors.primary,
+                    }}
+                    className="px-3 py-1"
+                  >
+                    <Star size={12} className="mr-1 fill-current" />
+                    {rooms.length} Premium Properties
+                  </Badge>
+                  <Badge variant="secondary" className="px-3 py-1">
+                    Avg Rating:{" "}
+                    {(
+                      rooms.reduce(
+                        (sum, room) => sum + room.average_rating,
+                        0
+                      ) / rooms.length
+                    ).toFixed(1)}
+                  </Badge>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex justify-center items-center py-20">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-gray-600">Loading top-rated properties...</p>
+              </div>
+            </div>
+          )}
 
           {/* Room Slider */}
-          <div
-            ref={sliderRef}
-            className="flex overflow-x-auto scrollbar-hide pb-4"
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-          >
-            {sampleRooms.map((room) => (
-              <RoomCard key={room.id} room={room} />
-            ))}
-          </div>
+          {!isLoading && rooms.length > 0 && (
+            <div
+              ref={sliderRef}
+              className="flex overflow-x-auto scrollbar-hide pb-4 gap-6"
+              style={{
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+                scrollSnapType: "x mandatory",
+              }}
+            >
+              {rooms.map((room) => (
+                <div key={room.id} style={{ scrollSnapAlign: "start" }}>
+                  <RoomCard room={room} />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* No Results State */}
+          {!isLoading && rooms.length === 0 && (
+            <div className="text-center py-20">
+              <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center">
+                <Star size={32} className="text-gray-400" />
+              </div>
+              <h3
+                className="text-xl font-semibold mb-3"
+                style={{ color: colors.dark }}
+              >
+                No Premium Properties Found
+              </h3>
+              <p className="text-gray-500 mb-6">
+                We're working to add more high-rated properties in your area.
+              </p>
+              <Button
+                style={{ backgroundColor: colors.primary }}
+                onClick={() => navigate("/listings")}
+                className="cursor-pointer"
+              >
+                Browse All Properties
+              </Button>
+            </div>
+          )}
+
+          {/* Slider Indicators */}
+          {!isLoading && rooms.length > 3 && (
+            <div className="flex justify-center mt-6">
+              <div className="text-sm text-gray-500">
+                Swipe or use arrow buttons to see more properties
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

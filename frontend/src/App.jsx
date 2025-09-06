@@ -19,47 +19,50 @@ import UserFavourites from "./pages/user/UserFavourites";
 import Terms from "./components/public/terms_privacy_pages/Terms";
 import Policy from "./components/public/terms_privacy_pages/Policy";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import { AuthProvider } from "./contexts/AuthContext";
 
 const App = () => {
   return (
-    <Routes>
-      <Route path="*" element={<NotFoundPage />} />
-      <Route path="/" element={<PublicLayout />}>
-        <Route index element={<Home />} />
-        <Route path="register" element={<Auth type="register" />} />
-        <Route path="login" element={<Auth type="login" />} />
-        <Route path="about" element={<About />} />
-        <Route path="listings" element={<Listings />} />
-        <Route path="listings/:id" element={<ListingDetail />} />
-        <Route path="contact" element={<Contact />} />
-        <Route path="terms" element={<Terms />} />
-        <Route path="policy" element={<Policy />} />
-        <Route path="verify-email/:token" element={<EmailVerification />} />
-        <Route path="forgot-password/:token" element={<ForgotPassword />} />
-      </Route>
-      <Route
-        path="/owner"
-        element={
-          <ProtectedRoute roles={["owner"]}>
-            <OwnerLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<OwnerDashboard />} />
-        <Route path="add-listing" element={<AddListingPage />} />
-      </Route>
-      <Route
-        path="/user"
-        element={
-          <ProtectedRoute roles={["user"]}>
-            <UserLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="/user/:id" element={<UserProfile />} />
-        <Route path="/user/:id/favourites" element={<UserFavourites />} />
-      </Route>
-    </Routes>
+    <AuthProvider>
+      <Routes>
+        <Route path="*" element={<NotFoundPage />} />
+        <Route path="/" element={<PublicLayout />}>
+          <Route index element={<Home />} />
+          <Route path="register" element={<Auth type="register" />} />
+          <Route path="login" element={<Auth type="login" />} />
+          <Route path="about" element={<About />} />
+          <Route path="listings" element={<Listings />} />
+          <Route path="listings/:id" element={<ListingDetail />} />
+          <Route path="contact" element={<Contact />} />
+          <Route path="terms" element={<Terms />} />
+          <Route path="policy" element={<Policy />} />
+          <Route path="verify-email/:token" element={<EmailVerification />} />
+          <Route path="forgot-password/:token" element={<ForgotPassword />} />
+        </Route>
+        <Route
+          path="/owner"
+          element={
+            <ProtectedRoute roles={["owner"]}>
+              <OwnerLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<OwnerDashboard />} />
+          <Route path="add-listing" element={<AddListingPage />} />
+        </Route>
+        <Route
+          path="/user"
+          element={
+            <ProtectedRoute roles={["user"]}>
+              <UserLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="/user/profile" element={<UserProfile />} />
+          <Route path="/user/favourites" element={<UserFavourites />} />
+        </Route>
+      </Routes>
+    </AuthProvider>
   );
 };
 

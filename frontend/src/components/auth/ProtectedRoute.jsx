@@ -12,7 +12,7 @@ const ProtectedRoute = ({ children, roles = [] }) => {
   }
 
   // Logged in, but not authorized
-  if (roles.length && !roles.includes(user.role)) {
+  if (roles.length && !roles.includes(user?.user?.role)) {
     return <Navigate to="/" />;
   }
   // Logged in and authorized

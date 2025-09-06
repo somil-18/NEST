@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { colors } from "@/utils/colors";
+import { useNavigate } from "react-router-dom";
 
 // Animated CTA Component
 const AnimatedCTA = () => {
+  const navigate = useNavigate();
   return (
     <div
       className="text-center py-16 px-6"
@@ -21,6 +23,9 @@ const AnimatedCTA = () => {
       <Button
         className="px-8 py-4 text-lg font-semibold text-white rounded-full transform transition-all duration-300 hover:scale-105 hover:shadow-lg animate-pulse"
         style={{ backgroundColor: colors.primary }}
+        onClick={() => {
+          navigate('/listings');
+        }}
         onMouseEnter={(e) => {
           e.currentTarget.style.backgroundColor = colors.accent;
           e.currentTarget.classList.remove("animate-pulse");

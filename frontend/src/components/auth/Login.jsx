@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { Label } from "../ui/label";
@@ -26,28 +26,39 @@ const loginInitialValues = {
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (user) {
+      navigate("/");
+    }
+  }, [navigate]);
 
   const formik = useFormik({
     initialValues: loginInitialValues,
     validationSchema: loginValidationSchema,
     onSubmit: async (values) => {
       console.log("Login Values:", values);
+      setLoading(true);
       try {
         const response = await axios.post(`${API_URL}/login`, values);
         console.log(response);
-        if(response?.data?.success){
+        if (response?.data?.success) {
           localStorage.setItem("token", response.data.access_token);
           localStorage.setItem("refresh_token", response.data.refresh_token);
           localStorage.setItem("user", JSON.stringify(response.data));
         }
-        if (response?.data?.role === "user") {
+        if (response?.data?.user?.role === "user") {
           navigate("/");
-        } else if (response?.data?.role === "owner") {
+        } else if (response?.data?.user?.role === "owner") {
           navigate("/owner");
         }
       } catch (error) {
         console.log(error);
+      } finally {
+        setLoading(false);
       }
     },
   });
@@ -195,6 +206,7 @@ export default function Login() {
           {/* Submit Button */}
           <Button
             type="submit"
+            disabled={loading}
             className="w-full py-3 rounded-md font-semibold text-white text-lg transition-colors duration-200"
             style={{ backgroundColor: colors.primary }}
             onMouseEnter={(e) =>
@@ -204,7 +216,7 @@ export default function Login() {
               (e.currentTarget.style.backgroundColor = colors.primary)
             }
           >
-            Sign In
+            {loading ? "Signing In..." : "Sign In"}
           </Button>
         </form>
 

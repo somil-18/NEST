@@ -136,8 +136,14 @@ export default function OwnerDashboard() {
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="" style={{ color: colors.primary }}>
-                <Button onClick={() => navigate(-1)} style={{ background: colors.primary }}>
+              <h1
+                className="flex items-center"
+                style={{ color: colors.primary }}
+              >
+                <Button
+                  onClick={() => navigate(-1)}
+                  style={{ background: colors.primary }}
+                >
                   <ArrowLeft size={16} />
                 </Button>
                 <span className="ml-4 sm:text-4xl text-xl font-bold bg-clip-text">

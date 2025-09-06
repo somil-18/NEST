@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
 import "swiper/css";
@@ -18,6 +19,10 @@ import {
   AirVent,
   Shield,
   Filter,
+  Bed,
+  Bath,
+  Square,
+  Users,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,141 +30,25 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { colors } from "@/utils/colors";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 import FilterPanel from "@/components/public/listings/FilterPanel";
 import ActiveFilters from "@/components/public/listings/ActiveFilters";
 import ListingPagination from "@/components/public/listings/ListingPagination";
+import axios from "axios";
+import { API_URL } from "@/utils/constants";
 
-// Sample rooms data with multiple images
-const sampleRooms = [
-  {
-    id: 1,
-    title: "Luxury Studio Apartment",
-    description:
-      "Modern furnished studio with premium amenities in prime location. Perfect for working professionals with high-speed internet and 24/7 security.",
-    price: 15000,
-    location: "Bandra West, Mumbai",
-    rating: 4.8,
-    images: [
-      "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800",
-      "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800",
-      "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800",
-    ],
-    amenities: ["Wi-Fi", "AC", "Kitchen", "Parking"],
-  },
-  {
-    id: 2,
-    title: "Spacious 2BHK Flat",
-    description:
-      "Well-ventilated flat with modern furniture and great connectivity to IT hubs. Ideal for couples or small families.",
-    price: 18000,
-    location: "Koramangala, Bangalore",
-    rating: 4.6,
-    images: [
-      "https://images.unsplash.com/photo-1556020685-ae41abfc9365?w=800",
-      "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800",
-      "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800",
-    ],
-    amenities: ["Wi-Fi", "Parking", "Security", "AC"],
-  },
-  {
-    id: 3,
-    title: "Premium PG Room",
-    description:
-      "Luxury PG with all meals included and housekeeping services. Perfect for students and young professionals.",
-    price: 12000,
-    location: "Sector 62, Noida",
-    rating: 4.5,
-    images: [
-      "https://plus.unsplash.com/premium_photo-1661964014750-963a28aeddea?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8aG9tZXxlbnwwfHwwfHx8MA%3D%3D",
-      "https://plus.unsplash.com/premium_photo-1661964014750-963a28aeddea?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8aG9tZXxlbnwwfHwwfHx8MA%3D%3D",
-      "https://plus.unsplash.com/premium_photo-1661964014750-963a28aeddea?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8aG9tZXxlbnwwfHwwfHx8MA%3D%3D",
-    ],
-    amenities: ["Wi-Fi", "Meals", "Laundry", "AC"],
-  },
-  {
-    id: 4,
-    title: "Executive Studio",
-    description:
-      "Premium studio apartment with concierge services and modern amenities",
-    price: 22000,
-    location: "Powai, Mumbai",
-    rating: 4.9,
-    images: [
-      "https://plus.unsplash.com/premium_photo-1661964014750-963a28aeddea?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8aG9tZXxlbnwwfHwwfHx8MA%3D%3D",
-      "https://plus.unsplash.com/premium_photo-1661964014750-963a28aeddea?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8aG9tZXxlbnwwfHwwfHx8MA%3D%3D",
-      "https://plus.unsplash.com/premium_photo-1661964014750-963a28aeddea?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8aG9tZXxlbnwwfHwwfHx8MA%3D%3D",
-    ],
-    amenities: ["Wi-Fi", "Gym", "Pool", "Security"],
-  },
-  {
-    id: 5,
-    title: "Cozy Single Room",
-    description:
-      "Affordable single room with basic amenities in a safe neighborhood",
-    price: 8000,
-    location: "Andheri East, Mumbai",
-    rating: 4.2,
-    images: [
-      "https://plus.unsplash.com/premium_photo-1661964014750-963a28aeddea?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8aG9tZXxlbnwwfHwwfHx8MA%3D%3D",
-      "https://plus.unsplash.com/premium_photo-1661964014750-963a28aeddea?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8aG9tZXxlbnwwfHwwfHx8MA%3D%3D",
-      "https://plus.unsplash.com/premium_photo-1661964014750-963a28aeddea?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8aG9tZXxlbnwwfHwwfHx8MA%3D%3D",
-    ],
-    amenities: ["Wi-Fi", "AC", "Kitchen"],
-  },
-  // Add more rooms for pagination demo
-  ...Array.from({ length: 50 }, (_, i) => ({
-    id: i + 6,
-    title: `Room ${i + 6} in City`,
-    description: `Comfortable accommodation with modern amenities and good connectivity to major areas.`,
-    price: Math.floor(Math.random() * 15000) + 5000,
-    location: [
-      "Mumbai",
-      "Bangalore",
-      "Delhi",
-      "Pune",
-      "Hyderabad",
-      "Chennai",
-      "Kolkata",
-    ][Math.floor(Math.random() * 7)],
-    rating: +(Math.random() * 1.5 + 3.5).toFixed(1),
-    images: [
-      "https://plus.unsplash.com/premium_photo-1661964014750-963a28aeddea?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8aG9tZXxlbnwwfHwwfHx8MA%3D%3D",
-      "https://plus.unsplash.com/premium_photo-1661964014750-963a28aeddea?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8aG9tZXxlbnwwfHwwfHx8MA%3D%3D",
-      "https://plus.unsplash.com/premium_photo-1661964014750-963a28aeddea?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8aG9tZXxlbnwwfHwwfHx8MA%3D%3D",
-    ],
-    amenities: [
-      "Wi-Fi",
-      "AC",
-      "Kitchen",
-      "Parking",
-      "Security",
-      "Gym",
-      "Pool",
-      "Laundry",
-      "Meals",
-    ].slice(0, Math.floor(Math.random() * 4) + 2),
-  })),
-];
+// Format currency in INR
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
 
-// Custom Debounce Hook
-function useDebounce(value, delay) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
-// Image Slider Component (keeping your existing code)
+// Image Slider Component
 const ImageSlider = ({ images, className = "" }) => {
   const [currentImage, setCurrentImage] = useState(0);
 
@@ -177,6 +66,9 @@ const ImageSlider = ({ images, className = "" }) => {
         src={images[currentImage]}
         alt="Room"
         className="w-full h-full object-cover rounded-lg"
+        onError={(e) => {
+          e.target.src = "/placeholder-image.jpg";
+        }}
       />
 
       {images.length > 1 && (
@@ -211,15 +103,80 @@ const ImageSlider = ({ images, className = "" }) => {
   );
 };
 
-// Featured Room Slider Component (keeping your existing code)
-const FeaturedRoomSlider = ({ rooms }) => {
+// Featured Room Slider Component
+const FeaturedRoomSlider = ({ rooms, favoriteIds, onFavoriteToggle }) => {
   const prevRef = useRef(null);
   const nextRef = useRef(null);
   const swiperRef = useRef(null);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [processingLikes, setProcessingLikes] = useState(new Set());
+
+  const handleLikeToggle = async (e, roomId) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!user) {
+      toast.error("You must be logged in to add favorites!", {
+        description:
+          "Create an account or sign in to save your favorite properties",
+        action: {
+          label: "Login",
+          onClick: () => navigate("/login"),
+        },
+      });
+      return;
+    }
+
+    if (processingLikes.has(roomId)) return;
+
+    setProcessingLikes((prev) => new Set([...prev, roomId]));
+    const isCurrentlyLiked = favoriteIds.has(roomId);
+
+    try {
+      if (isCurrentlyLiked) {
+        await axios.delete(`${API_URL}/favorites/${roomId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        onFavoriteToggle(roomId, false);
+        toast("💔 Removed from favorites", {
+          description: "Property removed from your favorites list",
+        });
+      } else {
+        await axios.post(
+          `${API_URL}/favorites/${roomId}`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        onFavoriteToggle(roomId, true);
+        toast.success("❤️ Added to favorites!", {
+          description: "Property saved to your favorites list",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating favorites:", error);
+      toast.error("❌ Failed to update favorites", {
+        description: "Please try again later",
+      });
+    } finally {
+      setProcessingLikes((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(roomId);
+        return newSet;
+      });
+    }
+  };
 
   const getAmenityIcon = (amenity) => {
     switch (amenity.toLowerCase()) {
       case "wi-fi":
+      case "wifi":
         return <Wifi size={16} />;
       case "parking":
         return <Car size={16} />;
@@ -262,9 +219,27 @@ const FeaturedRoomSlider = ({ rooms }) => {
             <Card className="overflow-hidden p-0">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
                 <div className="relative">
-                  <ImageSlider images={room.images} className="h-80 lg:h-96" />
-                  <button className="absolute top-4 right-4 p-2 rounded-full bg-white/80 hover:bg-white transition-colors">
-                    <Heart size={20} className="text-gray-600" />
+                  <ImageSlider
+                    images={room.image_urls || ["/placeholder-image.jpg"]}
+                    className="h-80 lg:h-96"
+                  />
+                  <button
+                    onClick={(e) => handleLikeToggle(e, room.id)}
+                    disabled={processingLikes.has(room.id)}
+                    className={`absolute top-4 right-4 p-2 rounded-full bg-white/80 hover:bg-white transition-all duration-200 z-10 cursor-pointer ${
+                      processingLikes.has(room.id)
+                        ? "opacity-50 cursor-not-allowed"
+                        : "hover:scale-110"
+                    }`}
+                  >
+                    <Heart
+                      size={20}
+                      className={`transition-all duration-200 ${
+                        favoriteIds.has(room.id)
+                          ? "fill-red-500 text-red-500 scale-110"
+                          : "text-gray-600 hover:text-red-400"
+                      }`}
+                    />
                   </button>
                 </div>
 
@@ -274,15 +249,17 @@ const FeaturedRoomSlider = ({ rooms }) => {
                       size={16}
                       className="fill-yellow-400 text-yellow-400"
                     />
-                    <span className="font-medium">{room.rating}</span>
+                    <span className="font-medium">
+                      {room.average_rating || "N/A"}
+                    </span>
                     <Badge
-                      className="ml-2"
-                      style={{
-                        backgroundColor: colors.lightPrimary,
-                        color: colors.primary,
-                      }}
+                      className={`ml-2 ${
+                        room.availability_status === "Available"
+                          ? "bg-green-500"
+                          : "bg-orange-500"
+                      } text-white`}
                     >
-                      Featured
+                      {room.availability_status || "N/A"}
                     </Badge>
                   </div>
 
@@ -290,57 +267,88 @@ const FeaturedRoomSlider = ({ rooms }) => {
                     className="text-3xl font-bold mb-4"
                     style={{ color: colors.dark }}
                   >
-                    {room.title}
+                    {room.title || "Untitled Property"}
                   </h2>
 
                   <div className="flex items-center gap-2 mb-4 text-gray-600">
                     <MapPin size={16} />
-                    <span>{room.location}</span>
+                    <span>
+                      {room.street_address}, {room.city}, {room.state}
+                    </span>
                   </div>
 
                   <p className="text-gray-600 mb-6 leading-relaxed">
-                    {room.description}
+                    {room.description || "No description available."}
                   </p>
 
+                  <div className="grid grid-cols-2 sm:grid-cols-4 items-center gap-4 mb-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-1 flex-1">
+                      <Bed size={16} />
+                      <span>{room.bedrooms || 0} beds</span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-1">
+                      <Bath size={16} />
+                      <span>{room.bathrooms || 0} bathroom</span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-1">
+                      <Square size={16} />
+                      <span>{room.area || "N/A"}</span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-1">
+                      <Users size={16} />
+                      <span>{room.seating || 0} seating</span>
+                    </div>
+                  </div>
+
                   <div className="flex flex-wrap gap-2 mb-6">
-                    {room.amenities.map((amenity, index) => (
-                      <Badge
-                        key={index}
-                        variant="secondary"
-                        className="flex items-center gap-1"
-                        style={{
-                          backgroundColor: colors.lightPrimary,
-                          color: colors.primary,
-                        }}
-                      >
-                        {getAmenityIcon(amenity)}
-                        {amenity}
-                      </Badge>
-                    ))}
+                    {room.amenities && Array.isArray(room.amenities) ? (
+                      <>
+                        {room.amenities.slice(0, 4).map((amenity, index) => (
+                          <Badge
+                            key={index}
+                            variant="secondary"
+                            className="flex items-center gap-1"
+                            style={{
+                              backgroundColor: colors.lightPrimary,
+                              color: colors.primary,
+                            }}
+                          >
+                            {getAmenityIcon(amenity)}
+                            {amenity}
+                          </Badge>
+                        ))}
+                        {room.amenities.length > 4 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{room.amenities.length - 4} more
+                          </Badge>
+                        )}
+                      </>
+                    ) : null}
                   </div>
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <span
-                        className="text-4xl font-bold"
-                        style={{ color: colors.primary }}
-                      >
-                        ₹{room.price.toLocaleString()}
+                      <span className="flex items-center">
+                        <span
+                          className="text-2xl font-bold"
+                          style={{ color: colors.primary }}
+                        >
+                          {formatCurrency(room.monthlyRent || 0)}
+                        </span>
+                        <span className="text-gray-500 ml-1">/month</span>
                       </span>
-                      <span className="text-gray-500 ml-1">/month</span>
+                      <div className="text-sm text-gray-500 underline">
+                        Security: {formatCurrency(room.securityDeposit || 0)}
+                      </div>
                     </div>
-                    <Button
-                      className="px-8 py-3 rounded-lg font-semibold transition-all hover:scale-105"
-                      style={{ backgroundColor: colors.primary }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor = colors.accent)
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor = colors.primary)
-                      }
-                    >
-                      Book Now
-                    </Button>
+                    <Link to={`/listings/${room.id}`}>
+                      <Button
+                        className="px-4 py-3 rounded-lg font-semibold transition-all hover:scale-105"
+                        style={{ backgroundColor: colors.primary }}
+                      >
+                        View Details
+                      </Button>
+                    </Link>
                   </div>
                 </CardContent>
               </div>
@@ -374,13 +382,86 @@ const FeaturedRoomSlider = ({ rooms }) => {
   );
 };
 
-// Regular Room Card Component (keeping your existing code)
-const RoomCard = ({ room }) => {
-  const [isLiked, setIsLiked] = useState(false);
+// Room Card Component
+const RoomCard = ({ room, favoriteIds, onFavoriteToggle }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  if (!room) {
+    return (
+      <Card className="overflow-hidden p-0 shadow-lg h-full flex flex-col">
+        <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
+          <span className="text-gray-500">No data available</span>
+        </div>
+      </Card>
+    );
+  }
+
+  const isLiked = favoriteIds.has(room.id);
+
+  const handleLikeToggle = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!user) {
+      toast.error("You must be logged in to add favorites!", {
+        description:
+          "Create an account or sign in to save your favorite properties",
+        action: {
+          label: "Login",
+          onClick: () => navigate("/login"),
+        },
+      });
+      return;
+    }
+
+    if (isProcessing) return;
+
+    setIsProcessing(true);
+
+    try {
+      if (isLiked) {
+        await axios.delete(`${API_URL}/favorites/${room.id}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        onFavoriteToggle(room.id, false);
+        toast("💔 Removed from favorites", {
+          description: "Property removed from your favorites list",
+        });
+      } else {
+        await axios.post(
+          `${API_URL}/favorites/${room.id}`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        onFavoriteToggle(room.id, true);
+        toast.success("❤️ Added to favorites!", {
+          description: "Property saved to your favorites list",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating favorites:", error);
+      toast.error("❌ Failed to update favorites", {
+        description: "Please try again later",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const getAmenityIcon = (amenity) => {
+    if (!amenity || typeof amenity !== "string") return <Home size={12} />;
+
     switch (amenity.toLowerCase()) {
       case "wi-fi":
+      case "wifi":
         return <Wifi size={12} />;
       case "parking":
         return <Car size={12} />;
@@ -396,166 +477,379 @@ const RoomCard = ({ room }) => {
     }
   };
 
+  const truncateDescription = (text, maxLength = 80) => {
+    if (!text || typeof text !== "string") return "";
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength).trim() + "...";
+  };
+
+  const truncateTitle = (text, maxLength = 25) => {
+    if (!text || typeof text !== "string") return "Untitled";
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength).trim() + "...";
+  };
+
+  const truncateAmenity = (text, maxLength = 8) => {
+    if (!text || typeof text !== "string") return "";
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength).trim() + "...";
+  };
+
+  const safeFormatCurrency = (amount) => {
+    if (!amount || isNaN(amount)) return "N/A";
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
   return (
-    <Card className="overflow-hidden p-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-      <div className="relative">
+    <Card className="overflow-hidden p-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 h-full flex flex-col">
+      <div className="relative h-48 flex-shrink-0">
         <img
-          src={room.images[0]}
-          alt={room.title}
-          className="w-full h-48 object-cover"
+          src={room.image_urls?.[0] || "/placeholder-image.jpg"}
+          alt={room.title || "Property image"}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            e.target.src = "/placeholder-image.jpg";
+          }}
         />
         <button
-          onClick={() => setIsLiked(!isLiked)}
-          className="absolute top-3 right-3 p-2 rounded-full bg-white/80 hover:bg-white transition-colors"
+          onClick={handleLikeToggle}
+          disabled={isProcessing}
+          className={`absolute top-3 right-3 p-2 rounded-full bg-white/80 hover:bg-white transition-all duration-200 z-10 cursor-pointer ${
+            isProcessing
+              ? "opacity-50 cursor-not-allowed"
+              : "hover:scale-110 hover:shadow-lg"
+          }`}
         >
           <Heart
             size={16}
-            className={`${
-              isLiked ? "fill-red-500 text-red-500" : "text-gray-600"
+            className={`transition-all duration-200 ${
+              isLiked
+                ? "fill-red-500 text-red-500 scale-110"
+                : "text-gray-600 hover:text-red-400"
             }`}
           />
         </button>
         <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-white/90 px-2 py-1 rounded">
           <Star size={12} className="fill-yellow-400 text-yellow-400" />
-          <span className="text-sm font-medium">{room.rating}</span>
+          <span className="text-sm font-medium">
+            {room.average_rating || "N/A"}
+          </span>
         </div>
+        <Badge
+          className={`absolute top-3 left-3 ${
+            room.availability_status === "Available"
+              ? "bg-green-500"
+              : "bg-orange-500"
+          } text-white`}
+        >
+          {room.availability_status || "N/A"}
+        </Badge>
       </div>
 
-      <CardContent className="p-4">
-        <div className="flex justify-between items-start mb-2">
+      <CardContent className="p-4 flex flex-col flex-grow">
+        <div className="flex justify-between items-start mb-2 min-h-[3rem]">
           <h3
-            className="font-semibold text-lg truncate"
+            className="font-semibold text-lg flex-1 leading-tight"
             style={{ color: colors.dark }}
+            title={room.title || "Untitled"}
           >
-            {room.title}
+            {truncateTitle(room.title)}
           </h3>
-          <div className="text-right ml-2">
+          <div className="text-right ml-2 flex-shrink-0">
             <span
-              className="text-xl font-bold"
+              className="text-xl font-bold block"
               style={{ color: colors.primary }}
             >
-              ₹{room.price.toLocaleString()}
+              {safeFormatCurrency(room.monthlyRent)}
             </span>
             <div className="text-xs text-gray-500">/month</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1 mb-2 text-sm text-gray-600">
-          <MapPin size={12} />
-          <span className="truncate">{room.location}</span>
+        <div className="flex items-center gap-1 mb-2 text-sm text-gray-600 min-h-[1.25rem]">
+          <MapPin size={12} className="flex-shrink-0" />
+          <span className="truncate">
+            {room.city || "Unknown"}, {room.state || "Unknown"}
+          </span>
         </div>
 
-        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-          {room.description}
-        </p>
+        <div className="mb-3 min-h-[2.5rem] flex items-start">
+          <p
+            className="text-gray-600 text-sm leading-tight"
+            title={room.description || ""}
+          >
+            {truncateDescription(room.description)}
+          </p>
+        </div>
 
-        <div className="flex flex-wrap gap-1">
-          {room.amenities.slice(0, 3).map((amenity, index) => (
-            <Badge
-              key={index}
-              variant="secondary"
-              className="text-xs flex items-center gap-1"
-              style={{ backgroundColor: colors.light, color: colors.primary }}
-            >
-              {getAmenityIcon(amenity)}
-              {amenity}
-            </Badge>
-          ))}
-          {room.amenities.length > 3 && (
-            <Badge variant="secondary" className="text-xs">
-              +{room.amenities.length - 3}
-            </Badge>
-          )}
+        <div className="flex items-center justify-between gap-2 mb-3 text-xs text-gray-600 min-h-[1rem]">
+          <div className="flex items-center gap-1">
+            <Bed size={12} />
+            <span>{room.bedrooms || 0}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Bath size={12} />
+            <span>{room.bathrooms || 0}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Square size={12} />
+            <span>{room.area || "N/A"}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Users size={12} />
+            <span>{room.seating || 0}</span>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-1 mt-auto">
+          {room.amenities && Array.isArray(room.amenities)
+            ? room.amenities.slice(0, 3).map((amenity, index) => (
+                <Badge
+                  key={index}
+                  variant="secondary"
+                  className="text-xs flex items-center gap-1"
+                  style={{
+                    backgroundColor: colors.light,
+                    color: colors.primary,
+                  }}
+                >
+                  {getAmenityIcon(amenity)}
+                  {truncateAmenity(amenity)}
+                </Badge>
+              ))
+            : null}
+          {room.amenities &&
+            Array.isArray(room.amenities) &&
+            room.amenities.length > 3 && (
+              <Badge variant="secondary" className="text-xs">
+                +{room.amenities.length - 3}
+              </Badge>
+            )}
         </div>
       </CardContent>
     </Card>
   );
 };
 
-
-
-// Main Listings Page Component
+// Main Listings Component
 export default function Listings() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const locationParam = searchParams.get("location");
+
+  // Separate states for input value and search query
+  const [inputValue, setInputValue] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [isSearching, setIsSearching] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [rooms, setRooms] = useState([]);
+  const [featuredRooms, setFeaturedRooms] = useState([]);
+  const [favoriteIds, setFavoriteIds] = useState(new Set());
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { user } = useAuth();
   const roomsPerPage = 12;
 
-  // Filter states
   const [filters, setFilters] = useState({
-    priceRange: [0, 50000],
+    priceRange: [0, 100000],
     minRating: 0,
     sortBy: "default",
   });
 
   const listingsRef = useRef(null);
 
-  // Debounced search query for better performance
-  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  // Handle URL location parameter
+  useEffect(() => {
+    if (locationParam) {
+      setInputValue(locationParam);
+      setSearchQuery(locationParam);
+      toast.success(`🔍 Searching for properties in ${locationParam}`, {
+        description: "Showing results for your location search",
+      });
+    } else {
+      setInputValue("");
+      setSearchQuery("");
+    }
+  }, [locationParam]);
 
-  // Enhanced filter function with sorting
+  // **KEY CHANGE**: Fetch from backend search endpoint when query present
+  useEffect(() => {
+    const fetchListings = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        let url = `${API_URL}/listings`;
+
+        // If there's a location parameter, use the search endpoint
+        if (locationParam && locationParam.trim() !== "") {
+          url = `${API_URL}/listings/search?location=${encodeURIComponent(
+            locationParam
+          )}`;
+        }
+
+        const response = await axios.get(url);
+        console.log(response);
+
+        if (locationParam && locationParam.trim() !== "") {
+          // For search results, use response.data.data directly as listings
+          setRooms(response.data.data || []);
+          setFeaturedRooms([]); // Clear featured rooms when searching
+        } else {
+          // For normal listings, use the structured response
+          setRooms(response.data?.data?.all_listings || []);
+          setFeaturedRooms(response.data?.data?.featured || []);
+        }
+
+        setError(null);
+      } catch (error) {
+        console.error("Error fetching listings:", error);
+        setError("Failed to load listings. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchListings();
+  }, [locationParam]); // Refetch when locationParam changes
+
+  // Fetch favorites
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (!user) {
+        setFavoriteIds(new Set());
+        return;
+      }
+
+      try {
+        const response = await axios.get(`${API_URL}/favorites`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+
+        if (response.data?.success) {
+          const favorites = response.data.data || [];
+          const likedIds = new Set(favorites.map((fav) => fav.id));
+          setFavoriteIds(likedIds);
+        }
+      } catch (error) {
+        console.error("Error fetching favorites:", error);
+      }
+    };
+
+    fetchFavorites();
+  }, [user]);
+
+  // Handle favorite toggle
+  const handleFavoriteToggle = (roomId, isLiked) => {
+    setFavoriteIds((prev) => {
+      const newSet = new Set(prev);
+      if (isLiked) {
+        newSet.add(roomId);
+      } else {
+        newSet.delete(roomId);
+      }
+      return newSet;
+    });
+  };
+
+  // **SIMPLIFIED**: Since backend handles search, we only need to filter by price/rating
   const filteredAndSortedRooms = useMemo(() => {
-    let filtered = sampleRooms.filter((room) => {
-      // Search query filter
-      const matchesSearch =
-        !debouncedSearchQuery.trim() ||
-        room.location
-          .toLowerCase()
-          .includes(debouncedSearchQuery.toLowerCase()) ||
-        room.title.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
-
-      // Price range filter
+    let filtered = rooms.filter((room) => {
       const withinPriceRange =
-        room.price >= filters.priceRange[0] &&
-        room.price <= filters.priceRange[1];
+        (room.monthlyRent || 0) >= filters.priceRange[0] &&
+        (room.monthlyRent || 0) <= filters.priceRange[1];
 
-      // Rating filter
-      const meetsRatingRequirement = room.rating >= filters.minRating;
+      const meetsRatingRequirement =
+        (room.average_rating || 0) >= filters.minRating;
 
-      return matchesSearch && withinPriceRange && meetsRatingRequirement;
+      return withinPriceRange && meetsRatingRequirement;
     });
 
-    // Apply sorting
     switch (filters.sortBy) {
       case "price_asc":
-        filtered.sort((a, b) => a.price - b.price);
+        filtered.sort((a, b) => (a.monthlyRent || 0) - (b.monthlyRent || 0));
         break;
       case "price_desc":
-        filtered.sort((a, b) => b.price - a.price);
+        filtered.sort((a, b) => (b.monthlyRent || 0) - (a.monthlyRent || 0));
         break;
       case "rating_desc":
-        filtered.sort((a, b) => b.rating - a.rating);
+        filtered.sort(
+          (a, b) => (b.average_rating || 0) - (a.average_rating || 0)
+        );
         break;
       case "rating_asc":
-        filtered.sort((a, b) => a.rating - b.rating);
+        filtered.sort(
+          (a, b) => (a.average_rating || 0) - (b.average_rating || 0)
+        );
         break;
       default:
-        // Keep original order
         break;
     }
 
+    console.log(filtered);
     return filtered;
-  }, [debouncedSearchQuery, filters]);
+  }, [rooms, filters]);
 
-  // Get top 5 featured rooms
-  const featuredRooms = filteredAndSortedRooms.slice(0, 5);
-
-  // Get paginated rooms (excluding featured ones)
-  const otherRooms = filteredAndSortedRooms.slice(5);
-  const totalPages = Math.ceil(otherRooms.length / roomsPerPage);
+  const totalPages = Math.ceil(filteredAndSortedRooms.length / roomsPerPage);
   const startIndex = (currentPage - 1) * roomsPerPage;
-  const paginatedRooms = otherRooms.slice(
+  const paginatedRooms = filteredAndSortedRooms.slice(
     startIndex,
     startIndex + roomsPerPage
   );
 
-  // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, filters]);
+  }, [searchQuery, filters]);
 
-  const handleSearch = (e) => {
-    setSearchQuery(e.target.value);
+  // Only update inputValue on change, not searchQuery
+  const handleInputChange = (e) => {
+    setInputValue(e.target.value);
+  };
+
+  // Search button handler - navigates to search URL
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+
+    if (!inputValue.trim()) {
+      toast.error("Please enter a location to search");
+      return;
+    }
+
+    setIsSearching(true);
+
+    // Navigate to search URL which will trigger the fetch
+    setCurrentPage(1);
+    setSearchParams({ location: inputValue.trim() });
+
+    setTimeout(() => {
+      setIsSearching(false);
+    }, 500);
+  };
+
+  // **UPDATED**: Clear search function - navigates back to /listings
+  const handleClearSearch = () => {
+    setInputValue("");
+    setSearchQuery("");
+    setCurrentPage(1);
+    setSearchParams({});
+    navigate("/listings");
+    toast.success("🔄 Search cleared", {
+      description: "Showing all available properties",
+    });
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleSearchSubmit(e);
+    }
   };
 
   const handleFilterChange = (key, value) => {
@@ -583,6 +877,35 @@ export default function Listings() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading properties...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button
+            onClick={() => window.location.reload()}
+            style={{ backgroundColor: colors.primary }}
+          >
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  console.log(rooms);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Enhanced Search Section */}
@@ -599,42 +922,83 @@ export default function Listings() {
               Discover verified accommodations in your preferred location
             </p>
 
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search size={24} style={{ color: colors.primary }} />
+            {/* Search Form */}
+            <form onSubmit={handleSearchSubmit} className="space-y-4">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Search size={24} style={{ color: colors.primary }} />
+                </div>
+                <Input
+                  type="text"
+                  placeholder="Search by city, area, or pincode"
+                  value={inputValue}
+                  onChange={handleInputChange}
+                  onKeyPress={handleKeyPress}
+                  className="px-14 pr-20 py-6 text-lg border-2 shadow-lg focus:shadow-xl transition-all"
+                  style={{
+                    borderColor: colors.border,
+                    fontSize: "16px",
+                  }}
+                  disabled={isSearching}
+                />
+                <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="p-2 rounded mr-2"
+                    onClick={() => setIsFilterOpen(true)}
+                    type="button"
+                  >
+                    <Filter size={20} style={{ color: colors.muted }} />
+                  </Button>
+                </div>
               </div>
-              <Input
-                type="text"
-                placeholder={`Search by city, area, or pincode`}
-                value={searchQuery}
-                onChange={handleSearch}
-                className="px-14 py-6 text-lg border-2 shadow-lg focus:shadow-xl transition-all"
-                style={{
-                  borderColor: colors.border,
-                  fontSize: "16px",
-                }}
-              />
-              <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="p-2 rounded"
-                  onClick={() => setIsFilterOpen(true)}
-                >
-                  <Filter size={20} style={{ color: colors.muted }} />
-                </Button>
-              </div>
-            </div>
 
-            {(debouncedSearchQuery ||
-              filteredAndSortedRooms.length !== sampleRooms.length) && (
-              <div className="mt-4 text-sm" style={{ color: colors.muted }}>
-                {debouncedSearchQuery && (
-                  <span>
-                    Showing results for "<strong>{debouncedSearchQuery}</strong>
-                    " •
-                  </span>
+              {/* Search Button and Clear Search Button */}
+              <div className="flex flex-col sm:flex-row sm:justify-end justify-center gap-2">
+                <Button
+                  type="submit"
+                  disabled={isSearching || !inputValue.trim()}
+                  className="w-full sm:w-auto px-2 py-3 text-lg font-semibold text-white transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: colors.primary }}
+                >
+                  {isSearching ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Searching...
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2">
+                      <Search size={20} />
+                      Search Properties
+                    </div>
+                  )}
+                </Button>
+
+                {/* **UPDATED**: Clear Search Button - only show when there's a query in URL */}
+                {locationParam && (
+                  <Button
+                    type="button"
+                    onClick={handleClearSearch}
+                    variant="outline"
+                    className="w-full sm:w-auto px-2 py-3 text-lg font-semibold border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-all duration-200 cursor-pointer"
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <X size={20} />
+                      Clear Search
+                    </div>
+                  </Button>
                 )}
+              </div>
+            </form>
+
+            {/* Search Results Info */}
+            {locationParam && (
+              <div className="mt-4 text-sm" style={{ color: colors.muted }}>
+                <span>
+                  Showing search results for "<strong>{locationParam}</strong>"
+                  •
+                </span>
                 <span> {filteredAndSortedRooms.length} properties found</span>
               </div>
             )}
@@ -651,8 +1015,8 @@ export default function Listings() {
         onClearFilters={handleClearFilters}
       />
 
-      {/* Featured Properties Slider */}
-      {!searchQuery && featuredRooms.length > 0 && (
+      {/* Featured Properties Slider - only show when NOT searching */}
+      {!locationParam && featuredRooms.length > 0 && (
         <section className="py-16 px-6 bg-white">
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between mb-12">
@@ -678,7 +1042,11 @@ export default function Listings() {
               </Badge>
             </div>
 
-            <FeaturedRoomSlider rooms={featuredRooms} />
+            <FeaturedRoomSlider
+              rooms={featuredRooms}
+              favoriteIds={favoriteIds}
+              onFavoriteToggle={handleFavoriteToggle}
+            />
           </div>
         </section>
       )}
@@ -692,14 +1060,16 @@ export default function Listings() {
                 className="text-3xl font-bold mb-2"
                 style={{ color: colors.dark }}
               >
-                All Properties
+                {locationParam ? "Search Results" : "All Properties"}
               </h2>
               <p className="text-lg" style={{ color: colors.muted }}>
-                Browse all available accommodations
+                {locationParam
+                  ? `Properties matching "${locationParam}"`
+                  : "Browse all available accommodations"}
               </p>
             </div>
             <div className="text-sm" style={{ color: colors.muted }}>
-              {otherRooms.length} properties • Page {currentPage} of{" "}
+              {filteredAndSortedRooms.length} properties • Page {currentPage} of{" "}
               {totalPages}
             </div>
           </div>
@@ -716,7 +1086,11 @@ export default function Listings() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-10">
                 {paginatedRooms.map((room) => (
                   <Link to={`/listings/${room.id}`} key={room.id}>
-                    <RoomCard room={room} />
+                    <RoomCard
+                      room={room}
+                      favoriteIds={favoriteIds}
+                      onFavoriteToggle={handleFavoriteToggle}
+                    />
                   </Link>
                 ))}
               </div>
@@ -742,8 +1116,9 @@ export default function Listings() {
                   No properties found
                 </h3>
                 <p className="text-gray-500 mb-6">
-                  Try adjusting your search criteria or filters to see more
-                  results.
+                  {locationParam
+                    ? `No properties found for "${locationParam}". Try a different search term or clear your search.`
+                    : "Try adjusting your search criteria or filters to see more results."}
                 </p>
                 <div className="space-y-2">
                   <Button
@@ -753,13 +1128,15 @@ export default function Listings() {
                   >
                     Clear Filters
                   </Button>
-                  <Button
-                    onClick={() => setSearchQuery("")}
-                    variant="outline"
-                    className="px-6 py-2"
-                  >
-                    Clear Search
-                  </Button>
+                  {locationParam && (
+                    <Button
+                      onClick={handleClearSearch}
+                      variant="outline"
+                      className="px-6 py-2"
+                    >
+                      Clear Search
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

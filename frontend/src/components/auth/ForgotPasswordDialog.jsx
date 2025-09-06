@@ -12,9 +12,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
-import { toast } from "sonner";
+// import { toast } from "sonner";
 import { Mail } from "lucide-react";
 import { colors } from "@/utils/colors";
+import axios from "axios";
+import { API_URL } from "@/utils/constants";
 
 // Yup validation schema for forgot password
 const forgotPasswordSchema = Yup.object({
@@ -25,21 +27,24 @@ const forgotPasswordSchema = Yup.object({
 
 export default function ForgotPasswordDialog() {
   const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const formik = useFormik({
     initialValues: {
       email: "",
     },
     validationSchema: forgotPasswordSchema,
-    onSubmit: (values, { resetForm }) => {
-      // Simulate API call
-      console.log("Forgot Password Email:", values.email);
-
-      // Show success toast
-      toast.success("Reset link shared to your mail", {
-        description: "Please check your email for password reset instructions.",
-        duration: 4000,
-      });
+    onSubmit: async (values, { resetForm }) => {
+      console.log("Sending mail");
+      setLoading(true);
+      try {
+        const response = await axios.post(`${API_URL}/forgot-password`, values);
+        console.log(response);
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setLoading(false);
+      }
 
       // Reset form and close modal
       resetForm();
@@ -70,7 +75,10 @@ export default function ForgotPasswordDialog() {
           </DialogTitle>
         </DialogHeader>
         <div>
-          <DialogDescription className="text-sm text-center mb-6" style={{ color: colors.muted }}>
+          <DialogDescription
+            className="text-sm text-center mb-6"
+            style={{ color: colors.muted }}
+          >
             Enter your email address and we'll send you a link to reset your
             password.
           </DialogDescription>
@@ -103,14 +111,20 @@ export default function ForgotPasswordDialog() {
                       ? "border-red-500"
                       : ""
                   } outline-none transition-colors`}
-                  style={{ 
+                  style={{
                     backgroundColor: colors.light,
                     color: colors.dark,
-                    borderColor: formik.touched.email && formik.errors.email ? colors.error : colors.border
+                    borderColor:
+                      formik.touched.email && formik.errors.email
+                        ? colors.error
+                        : colors.border,
                   }}
                   onFocus={(e) => {
                     e.currentTarget.style.outline = "none";
-                    e.currentTarget.style.borderColor = formik.touched.email && formik.errors.email ? colors.error : colors.border;
+                    e.currentTarget.style.borderColor =
+                      formik.touched.email && formik.errors.email
+                        ? colors.error
+                        : colors.border;
                   }}
                 />
               </div>
@@ -127,19 +141,24 @@ export default function ForgotPasswordDialog() {
                 variant="outline"
                 onClick={() => setIsOpen(false)}
                 className="flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors"
-                style={{ 
-                  borderColor: colors.border, 
+                style={{
+                  borderColor: colors.border,
                   color: colors.muted,
-                  backgroundColor: "transparent"
+                  backgroundColor: "transparent",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = colors.light)}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor = colors.light)
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = "transparent")
+                }
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                className="flex-1 py-2 px-4 rounded-md font-semibold text-white transition-colors duration-200"
+                disabled={loading}
+                className="flex-1 py-2 px-4 disabled:cursor-not-allowed rounded-md font-semibold text-white transition-colors duration-200"
                 style={{ backgroundColor: colors.primary }}
                 onMouseEnter={(e) =>
                   (e.currentTarget.style.backgroundColor = colors.accent)
@@ -148,7 +167,7 @@ export default function ForgotPasswordDialog() {
                   (e.currentTarget.style.backgroundColor = colors.primary)
                 }
               >
-                Send Reset Link
+                {loading ? "Sending..." : "Send Reset Link"}
               </Button>
             </div>
           </form>
