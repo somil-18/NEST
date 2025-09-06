@@ -2,75 +2,99 @@ from flask import request, Blueprint
 from flask_restful import Api, Resource
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
-
 from ..extensions import db
 from ..models import User, Listing
-
 
 favorites_bp = Blueprint('favorites', __name__)
 api = Api(favorites_bp)
 
 
-# summary of fav. listings
-def serialize_listing_summary(listing):
+# --- NEW: Helper function to serialize the owner's public data ---
+def serialize_owner_summary(owner):
+    """Creates a compact summary of the owner's details."""
+    if not owner: return None
+    return {
+        "id": owner.id,
+        "username": owner.username,
+        "mobile_no": owner.mobile_no
+    }
+
+
+# --- REPLACED: This function now serializes ALL listing details ---
+def serialize_listing_for_favorites(listing):
+    """Creates a complete, detailed dictionary for a favorited listing."""
     if not listing: return None
     return {
         "id": listing.id,
         "title": listing.title,
-        "monthlyRent": listing.monthlyRent,
+        "description": listing.description,
+        "street_address": listing.street_address,
         "city": listing.city,
         "state": listing.state,
-        "main_image_url": listing.image_urls[0] if listing.image_urls else None
+        "pincode": listing.pincode,
+        "monthlyRent": listing.monthlyRent,
+        "securityDeposit": listing.securityDeposit,
+        "propertyType": listing.propertyType,
+        "bedrooms": listing.bedrooms,
+        "bathrooms": listing.bathrooms,
+        "seating": listing.seating,
+        "area": listing.area,
+        "furnishing": listing.furnishing,
+        "amenities": listing.amenities or [],
+        "image_urls": listing.image_urls or [], # Return all images
+        "owner": serialize_owner_summary(listing.owner) # Include nested owner details
     }
 
 
-# view fav. listings
 class FavoriteList(Resource):
     @jwt_required()
     def get(self):
+        """Fetches all of the current user's favorite listings with full details."""
         user_id = int(get_jwt_identity())
-        user = User.query.get(user_id)
-        
-        if not user:
-            return {"success": False, "message": "User not found"}, 404
+        user = User.query.get_or_404(user_id)
             
-        # the 'favorites' relationship automatically gives list of listings.
         favorite_listings = user.favorites
         
-        return {"success": True, "data": [serialize_listing_summary(l) for l in favorite_listings]}
+        # --- THIS IS THE CHANGE ---
+        # Use the new, more detailed serializer.
+        return {"success": True, "data": [serialize_listing_for_favorites(l) for l in favorite_listings]}
 
 
-# add or delete listings
 class FavoriteResource(Resource):
     @jwt_required()
     def post(self, listing_id):
+        """Adds a listing to the user's favorites and returns the full listing object."""
         user_id = int(get_jwt_identity())
-        user = User.query.get_or_404(user_id, description="User not found")
-        listing = Listing.query.get_or_404(listing_id, description="Listing not found")
+        user = User.query.get_or_404(user_id)
+        listing = Listing.query.get_or_404(listing_id)
 
-        # check if the user has already favorited this listing
         if listing in user.favorites:
-            return {"success": False, "message": "Listing already in favorites"}, 409 # 409 Conflict
+            return {"success": False, "message": "Listing already in favorites"}, 409
 
-        # appending to the list adds a row to our junction table.
         user.favorites.append(listing)
         db.session.commit()
 
-        return {"success": True, "message": "Listing added to favorites"}, 201
+        # --- BEST PRACTICE: Return the data that was just created ---
+        return {
+            "success": True, 
+            "data": serialize_listing_for_favorites(listing),
+            "message": "Listing added to favorites"
+        }, 201
 
     @jwt_required()
     def delete(self, listing_id):
+        """Removes a listing from the user's favorites."""
         user_id = int(get_jwt_identity())
-        user = User.query.get_or_404(user_id, description="User not found")
-        listing = Listing.query.get_or_404(listing_id, description="Listing not found")
+        user = User.query.get_or_404(user_id)
+        listing = Listing.query.get_or_404(listing_id)
 
-        # check if the listing is actually in the user's favorites
         if listing not in user.favorites:
             return {"success": False, "message": "Listing not in favorites"}, 404
 
         user.favorites.remove(listing)
         db.session.commit()
         
+        # A 204 No Content response is a professional standard for a successful delete.
         return '', 204
 
 
