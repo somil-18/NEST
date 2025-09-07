@@ -43,7 +43,7 @@ class OwnerDashboard(Resource):
     def get(self):
         """
         Gathers and returns key metrics for an owner's dashboard, including the
-        total number of unique tenants who have ever booked.
+        total number of confirmed bookings.
         """
         user_id = int(get_jwt_identity())
         owner = User.query.get_or_404(user_id)
@@ -67,19 +67,19 @@ class OwnerDashboard(Resource):
             Booking.appointment_date < today
         ).scalar() or 0.0
 
-        total_tenants = db.session.query(func.count(Booking.user_id.distinct())).filter(
+        # --- THIS IS THE NEW QUERY ---
+        # It now simply counts every confirmed booking, without checking for uniqueness.
+        total_bookings = db.session.query(func.count(Booking.id)).filter(
             Booking.listing_id.in_(owner_listing_ids),
             Booking.status == 'Confirmed'
         ).scalar() or 0
         
-        # --- THE EFFICIENT & RELIABLE BOOKING QUERY ---
-        # We tell SQLAlchemy to "eagerly load" the related listing and tenant data
-        # in a single, efficient database query, which prevents the '[null, null]' error.
+        # Get a list of ALL bookings (past, present, and future)
         all_bookings = Booking.query.filter(
             Booking.listing_id.in_(owner_listing_ids)
         ).options(
-            joinedload(Booking.listing), # Pre-load the listing data
-            joinedload(Booking.tenant)   # Pre-load the tenant (user) data
+            joinedload(Booking.listing), 
+            joinedload(Booking.tenant)
         ).order_by(Booking.appointment_date.desc()).all()
 
         # --- Assemble the Final Response ---
@@ -87,7 +87,8 @@ class OwnerDashboard(Resource):
         dashboard_data = {
             "summary_stats": {
                 "total_listings": total_listings,
-                "total_tenants": total_tenants,
+                # --- THIS IS THE UPDATED METRIC ---
+                "total_bookings": total_bookings,
                 "total_revenue": round(total_revenue, 2)
             },
             "all_bookings": [serialize_booking_for_dashboard(b) for b in all_bookings]
@@ -97,3 +98,4 @@ class OwnerDashboard(Resource):
 
 
 api.add_resource(OwnerDashboard, "/owner/dashboard")
+
