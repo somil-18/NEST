@@ -803,6 +803,78 @@ Authorization: Bearer <access_token>
 
 ---
 
+## Owner Dashboard
+
+**Endpoint:** `GET /owner/dashboard`  
+**Description:** This is the central endpoint for an **owner**. It provides a complete snapshot of their business activity in a single, efficient API call.
+
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+- ``200 OK:`` 
+**Response:**
+```json
+{
+    "success": true,
+    "data": {
+        "summary_stats": {
+            "total_listings": 9,
+            "total_bookings": 2,
+            "total_revenue": 85000.0
+        },
+        "all_bookings": [
+            {
+                "booking_id": 2,
+                "booking_date": "2025-09-02",
+                "status": "Confirmed",
+                "attendees": 2,
+                "listing_title": "2 BHK",
+                "listing_id": 1,
+                "tenant": {
+                    "id": 2,
+                    "username": "Yash",
+                    "mobile_no": "9123465789",
+                    "email": "yash@example.com"
+                }
+            },
+            {
+                "booking_id": 3,
+                "booking_date": "2025-08-03",
+                "status": "Confirmed",
+                "attendees": 4,
+                "listing_title": "4 BHK",
+                "listing_id": 2,
+                "tenant": {
+                    "id": 2,
+                    "username": "Yash",
+                    "mobile_no": "9123465789",
+                    "email": "yash@example.com"
+                }
+            }
+        ]
+    }
+}
+
+```
+
+```
+RESPONSE BODY BREAKDOWN
+
+1. total_listings (Integer): The total number of properties created by this owner.
+
+2. total_bookings (Integer): The total number of 'Confirmed' bookings the owner has ever received across all their properties. This is a measure of total business activity.
+
+3. total_revenue (Float): The sum of the monthlyRent from all past, 'Confirmed' bookings. This represents the total completed business revenue.
+```
+
+- ``401 Unauthorized:`` The Authorization header is missing, or the access token is invalid or expired.
+- ``403 Forbidden:``  The user is successfully authenticated, but their role is not 'owner'.
+
+---
+
 ## Email Verification
 
 After registering, the user will receive an email with a verification link:
