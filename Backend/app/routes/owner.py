@@ -2,6 +2,7 @@ from flask import request, Blueprint
 from flask_restful import Api, Resource
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 from datetime import date
 
 from ..extensions import db
@@ -10,13 +11,31 @@ from ..models import User, Listing, Booking
 owner_bp = Blueprint('owner', __name__)
 api = Api(owner_bp)
 
-# --- (Your helper functions for serialization are perfect and remain the same) ---
+
+# --- Helper functions to format the response data ---
+
 def serialize_tenant_for_dashboard(user):
-    # ... (no change needed)
-    pass
+    """Serializes a tenant's public info for the owner's dashboard."""
+    if not user: return None
+    return {
+        "id": user.id,
+        "username": user.username,
+        "mobile_no": user.mobile_no,
+        "email": user.email
+    }
+
 def serialize_booking_for_dashboard(booking):
-    # ... (no change needed)
-    pass
+    """Serializes a booking's details for the owner's dashboard."""
+    if not booking: return None
+    return {
+        "booking_id": booking.id,
+        "booking_date": booking.appointment_date.isoformat(),
+        "status": booking.status,
+        "attendees": booking.attendees,
+        "listing_title": booking.listing.title,
+        "listing_id": booking.listing.id,
+        "tenant": serialize_tenant_for_dashboard(booking.tenant)
+    }
 
 
 class OwnerDashboard(Resource):
@@ -27,9 +46,9 @@ class OwnerDashboard(Resource):
         total number of unique tenants who have ever booked.
         """
         user_id = int(get_jwt_identity())
-        owner = User.query.get(user_id)
+        owner = User.query.get_or_404(user_id)
 
-        if not owner or owner.role.lower() != 'owner':
+        if owner.role.lower() != 'owner':
             return {"success": False, "message": "Access denied: Owner role required."}, 403
 
         today = date.today()
@@ -48,16 +67,19 @@ class OwnerDashboard(Resource):
             Booking.appointment_date < today
         ).scalar() or 0.0
 
-        # It counts the number of DISTINCT user_ids from all 'Confirmed' bookings
-        # for the owner's properties, giving the total number of unique tenants.
         total_tenants = db.session.query(func.count(Booking.user_id.distinct())).filter(
             Booking.listing_id.in_(owner_listing_ids),
             Booking.status == 'Confirmed'
         ).scalar() or 0
         
-        # Get a list of ALL bookings (past, present, and future)
+        # --- THE EFFICIENT & RELIABLE BOOKING QUERY ---
+        # We tell SQLAlchemy to "eagerly load" the related listing and tenant data
+        # in a single, efficient database query, which prevents the '[null, null]' error.
         all_bookings = Booking.query.filter(
             Booking.listing_id.in_(owner_listing_ids)
+        ).options(
+            joinedload(Booking.listing), # Pre-load the listing data
+            joinedload(Booking.tenant)   # Pre-load the tenant (user) data
         ).order_by(Booking.appointment_date.desc()).all()
 
         # --- Assemble the Final Response ---
@@ -65,7 +87,6 @@ class OwnerDashboard(Resource):
         dashboard_data = {
             "summary_stats": {
                 "total_listings": total_listings,
-                # --- THIS IS THE UPDATED METRIC ---
                 "total_tenants": total_tenants,
                 "total_revenue": round(total_revenue, 2)
             },
