@@ -15,29 +15,56 @@ api = Api(owner_bp)
 # --- Helper functions to format the response data ---
 
 def serialize_tenant_for_dashboard(user):
-    """Safely serializes a tenant's public info for the owner's dashboard."""
+    """
+    Safely serializes a tenant's FULL public profile for the owner's dashboard.
+    """
     if not user:
-        return {"id": None, "username": "Deleted User", "mobile_no": None, "email": None}
+        return {"id": None, "username": "Deleted User"}
     return {
-        "id": user.id, "username": user.username,
-        "mobile_no": user.mobile_no, "email": user.email
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "mobile_no": user.mobile_no,
+        "bio": user.bio,
+        "address": user.address,
+        "gender": user.gender,
+        "age": user.age,
+        "profile_image_url": user.profile_image_url
+    }
+
+def serialize_listing_for_dashboard(listing):
+    """Creates a complete, detailed dictionary for a listing in the booking view."""
+    if not listing: return None
+    return {
+        "id": listing.id,
+        "title": listing.title,
+        "description": listing.description,
+        "street_address": listing.street_address,
+        "city": listing.city,
+        "state": listing.state,
+        "pincode": listing.pincode,
+        "propertyType": listing.propertyType,
+        "monthlyRent": listing.monthlyRent,
+        "securityDeposit": listing.securityDeposit,
+        "bedrooms": listing.bedrooms,
+        "bathrooms": listing.bathrooms,
+        "seating": listing.seating,
+        "area": listing.area,
+        "furnishing": listing.furnishing,
+        "amenities": listing.amenities or [],
+        "image_urls": listing.image_urls or [],
     }
 
 def serialize_booking_for_dashboard(booking):
-    """Safely serializes a booking's details for the owner's dashboard."""
-    if not booking:
-        return None
-    
-    listing_title = booking.listing.title if booking.listing else "Deleted Listing"
-    listing_id = booking.listing.id if booking.listing else None
+    """Serializes a booking with the FULL nested listing and tenant details."""
+    if not booking: return None
     
     return {
         "booking_id": booking.id,
         "booking_date": booking.appointment_date.isoformat(),
         "status": booking.status,
         "attendees": booking.attendees,
-        "listing_title": listing_title,
-        "listing_id": listing_id,
+        "listing": serialize_listing_for_dashboard(booking.listing),
         "tenant": serialize_tenant_for_dashboard(booking.tenant)
     }
 
@@ -45,6 +72,10 @@ def serialize_booking_for_dashboard(booking):
 class OwnerDashboard(Resource):
     @jwt_required()
     def get(self):
+        """
+        Gathers and returns key metrics for an owner's dashboard, including the
+        total number of confirmed bookings.
+        """
         user_id = int(get_jwt_identity())
         owner = User.query.get_or_404(user_id)
 
@@ -59,7 +90,6 @@ class OwnerDashboard(Resource):
 
         total_listings = db.session.query(func.count(Listing.id)).filter(Listing.owner_id == user_id).scalar() or 0
 
-        # --- CORRECTED: Full revenue calculation logic ---
         total_revenue = db.session.query(func.sum(Listing.monthlyRent)).join(
             Booking, Booking.listing_id == Listing.id
         ).filter(
@@ -68,14 +98,13 @@ class OwnerDashboard(Resource):
             Booking.appointment_date < today
         ).scalar() or 0.0
 
-        # --- CORRECTED: Full tenants today calculation logic ---
-        total_tenants_today = db.session.query(func.sum(Booking.attendees)).filter(
+        total_bookings = db.session.query(func.count(Booking.id)).filter(
             Booking.listing_id.in_(owner_listing_ids),
-            Booking.appointment_date == today,
-            Booking.status.in_(['Confirmed', 'Pending'])
+            Booking.status == 'Confirmed'
         ).scalar() or 0
         
-        # Get a list of ALL bookings (past, present, and future)
+        # --- EFFICIENT & RELIABLE BOOKING QUERY ---
+        # Eagerly loads related listing and tenant data to prevent errors and improve performance.
         all_bookings = Booking.query.filter(
             Booking.listing_id.in_(owner_listing_ids)
         ).options(
@@ -83,16 +112,16 @@ class OwnerDashboard(Resource):
             joinedload(Booking.tenant)
         ).order_by(Booking.appointment_date.desc()).all()
 
-        # The list comprehension will now safely handle all cases
+        # Safely serialize bookings, handling potential missing data
         serialized_bookings = [serialize_booking_for_dashboard(b) for b in all_bookings]
         
         dashboard_data = {
             "summary_stats": {
                 "total_listings": total_listings,
-                "total_tenants_today": total_tenants_today,
+                "total_bookings": total_bookings,
                 "total_revenue": round(total_revenue, 2)
             },
-            "all_bookings": [b for b in serialized_bookings if b is not None] # Filter out any None values
+            "all_bookings": [b for b in serialized_bookings if b is not None]
         }
         
         return {"success": True, "data": dashboard_data}
