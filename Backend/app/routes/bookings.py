@@ -79,11 +79,10 @@ def serialize_booking_for_self(booking):
 class BookingCreate(Resource):
     @jwt_required()
     def post(self):
-        """Schedules a new booking to view a listing."""
+        """Schedules a new appointment and ensures a user can only book a listing once."""
         user_id = int(get_jwt_identity())
         data = request.get_json()
         
-        # --- TRANSLATION: Read `booking_date` from the incoming JSON ---
         listing_id = data.get("listing_id")
         booking_date_str = data.get("booking_date")
         attendees = data.get("attendees", 1)
@@ -91,7 +90,7 @@ class BookingCreate(Resource):
         if not all([listing_id, booking_date_str]):
             return {"success": False, "message": "Missing listing_id or booking_date"}, 400
 
-        # ... (attendees validation is the same)
+        # ... (attendees and date format validation remains the same)
             
         try:
             booking_date = datetime.strptime(booking_date_str, "%Y-%m-%d").date()
@@ -102,10 +101,21 @@ class BookingCreate(Resource):
         if listing.owner_id == user_id:
             return {"success": False, "message": "You cannot book for your own listing"}, 403
 
-        # --- INTERNAL LOGIC: Still uses `appointment_date` to query the DB ---
+        # --- THIS IS THE NEW VALIDATION LOGIC ---
+        # Before checking capacity, first check if this user has EVER booked this listing before.
+        existing_booking = Booking.query.filter_by(
+            user_id=user_id,
+            listing_id=listing_id
+        ).first()
+
+        if existing_booking:
+            return {"success": False, "message": "You have already booked an appointment for this listing."}, 409 # 409 Conflict
+        # ----------------------------------------
+
+        # If the user has never booked before, then we check the daily capacity.
         total_attendees_on_day = db.session.query(func.sum(Booking.attendees)).filter(
             Booking.listing_id == listing_id,
-            Booking.appointment_date == booking_date, # <-- USES REAL DB COLUMN NAME
+            Booking.appointment_date == booking_date,
             Booking.status.in_(["Confirmed", "Pending"])
         ).scalar() or 0
 
@@ -113,11 +123,11 @@ class BookingCreate(Resource):
             remaining_capacity = listing.seating - total_attendees_on_day
             return {"success": False, "message": f"Daily capacity reached. Only {remaining_capacity} spots left."}, 409
 
-        # --- TRANSLATION: Map the incoming `booking_date` to the DB's `appointment_date` column ---
+        # If both checks pass, create the new booking.
         booking = Booking(
             user_id=user_id,
             listing_id=listing_id,
-            appointment_date=booking_date, # <-- USES REAL DB COLUMN NAME
+            appointment_date=booking_date,
             attendees=attendees
         )
         db.session.add(booking)
@@ -187,6 +197,7 @@ api.add_resource(MyBookings, "/bookings/my")
 api.add_resource(OwnerBookings, "/bookings/owner")
 api.add_resource(BookingUpdate, "/bookings/<int:booking_id>")
 api.add_resource(BookingCancel, "/bookings/<int:booking_id>/cancel")
+
 
 
 
