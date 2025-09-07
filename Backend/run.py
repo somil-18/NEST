@@ -1,4 +1,6 @@
 from dotenv import load_dotenv
+from flask_cors import CORS
+import os
 
 
 load_dotenv()
@@ -8,6 +10,7 @@ from app import create_app, db
 
 
 app = create_app()
+CORS(app, resources={r"/*": {"origins": os.getenv("FRONTEND_URL")}})
 
 
 if __name__ == "__main__":
