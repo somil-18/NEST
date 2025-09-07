@@ -11,12 +11,12 @@ from ..models import User, Listing, Booking
 owner_bp = Blueprint('owner', __name__)
 api = Api(owner_bp)
 
-# --- UPDATED: More robust helper functions ---
+
+# --- Helper functions to format the response data ---
 
 def serialize_tenant_for_dashboard(user):
     """Safely serializes a tenant's public info for the owner's dashboard."""
     if not user:
-        # Return a placeholder if the tenant was deleted
         return {"id": None, "username": "Deleted User", "mobile_no": None, "email": None}
     return {
         "id": user.id, "username": user.username,
@@ -24,15 +24,10 @@ def serialize_tenant_for_dashboard(user):
     }
 
 def serialize_booking_for_dashboard(booking):
-    """
-    Safely serializes a booking's details for the owner's dashboard.
-    This function now handles cases where the related listing has been deleted.
-    """
+    """Safely serializes a booking's details for the owner's dashboard."""
     if not booking:
         return None
     
-    # --- THIS IS THE FIX ---
-    # Create a placeholder for the listing if it has been deleted
     listing_title = booking.listing.title if booking.listing else "Deleted Listing"
     listing_id = booking.listing.id if booking.listing else None
     
@@ -58,11 +53,29 @@ class OwnerDashboard(Resource):
 
         today = date.today()
         
+        # --- Database Queries for Metrics ---
+
         owner_listing_ids = db.session.query(Listing.id).filter(Listing.owner_id == user_id).scalar_subquery()
-        total_listings = db.session.query(func.count(Listing.id)).filter(Listing.owner_id == user_id).scalar()
-        total_revenue = db.session.query(func.sum(Listing.monthlyRent)).join(Booking, ...).scalar() or 0.0
-        total_tenants_today = db.session.query(func.sum(Booking.attendees)).filter(...).scalar() or 0
+
+        total_listings = db.session.query(func.count(Listing.id)).filter(Listing.owner_id == user_id).scalar() or 0
+
+        # --- CORRECTED: Full revenue calculation logic ---
+        total_revenue = db.session.query(func.sum(Listing.monthlyRent)).join(
+            Booking, Booking.listing_id == Listing.id
+        ).filter(
+            Listing.owner_id == user_id,
+            Booking.status == 'Confirmed',
+            Booking.appointment_date < today
+        ).scalar() or 0.0
+
+        # --- CORRECTED: Full tenants today calculation logic ---
+        total_tenants_today = db.session.query(func.sum(Booking.attendees)).filter(
+            Booking.listing_id.in_(owner_listing_ids),
+            Booking.appointment_date == today,
+            Booking.status.in_(['Confirmed', 'Pending'])
+        ).scalar() or 0
         
+        # Get a list of ALL bookings (past, present, and future)
         all_bookings = Booking.query.filter(
             Booking.listing_id.in_(owner_listing_ids)
         ).options(
@@ -79,7 +92,7 @@ class OwnerDashboard(Resource):
                 "total_tenants_today": total_tenants_today,
                 "total_revenue": round(total_revenue, 2)
             },
-            "all_bookings": serialized_bookings
+            "all_bookings": [b for b in serialized_bookings if b is not None] # Filter out any None values
         }
         
         return {"success": True, "data": dashboard_data}
