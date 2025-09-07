@@ -18,17 +18,38 @@ def serialize_user_summary(user):
     # This function is already correct
     if not user: return None
     return {
-        "id": user.id, "username": user.username, "mobile_no": user.mobile_no,
-        "gender": user.gender, "age": user.age
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "mobile_no": user.mobile_no,
+        "bio": user.bio,
+        "address": user.address,
+        "gender": user.gender,
+        "age": user.age,
+        "profile_image_url": user.profile_image_url
     }
 
 def serialize_listing_summary(listing):
     # This function is already correct
     if not listing: return None
     return {
-        "id": listing.id, "title": listing.title, "street_address": listing.street_address,
-        "city": listing.city, "state": listing.state,
-        "main_image_url": listing.image_urls[0] if listing.image_urls else None
+            "id": listing.id,
+        "title": listing.title,
+        "description": listing.description,
+        "street_address": listing.street_address,
+        "city": listing.city,
+        "state": listing.state,
+        "pincode": listing.pincode,
+        "propertyType": listing.propertyType,
+        "monthlyRent": listing.monthlyRent,
+        "securityDeposit": listing.securityDeposit,
+        "bedrooms": listing.bedrooms,
+        "bathrooms": listing.bathrooms,
+        "seating": listing.seating,
+        "area": listing.area,
+        "furnishing": listing.furnishing,
+        "amenities": listing.amenities or [],
+        "image_urls": listing.image_urls or [],
     }
 
 def serialize_booking(booking):
@@ -166,5 +187,6 @@ api.add_resource(MyBookings, "/bookings/my")
 api.add_resource(OwnerBookings, "/bookings/owner")
 api.add_resource(BookingUpdate, "/bookings/<int:booking_id>")
 api.add_resource(BookingCancel, "/bookings/<int:booking_id>/cancel")
+
 
 
