@@ -896,9 +896,8 @@ Authorization: Bearer <access_token>
                     "https://res.cloudinary.com/dwyabk2ek/image/upload/v1756836399/momdo91kv9tms1p8oybx.jpg",
                     "https://res.cloudinary.com/dwyabk2ek/image/upload/v1756836399/zaylumpxun0xem2joyac.jpg"
                 ]
-            },
-            .
-            .
+            }
+// and so on.....
     }
 }
 
