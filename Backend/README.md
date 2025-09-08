@@ -822,39 +822,83 @@ Authorization: Bearer <access_token>
     "data": {
         "summary_stats": {
             "total_listings": 9,
-            "total_bookings": 2,
-            "total_revenue": 85000.0
+            "total_bookings": 0,
+            "total_revenue": 0.0
         },
         "all_bookings": [
             {
-                "booking_id": 2,
-                "booking_date": "2025-09-02",
-                "status": "Confirmed",
-                "attendees": 2,
-                "listing_title": "2 BHK",
-                "listing_id": 1,
+                "booking_id": 5,
+                "booking_date": "2025-09-09",
+                "status": "Pending",
+                "attendees": 1,
+                "listing": {
+                    "id": 1,
+                    "title": "2 BHK",
+                    "description": "This is a 2bhk flat",
+                    "street_address": "Near Dreamvilla",
+                    "city": "Solan",
+                    "state": "Himachal Pradesh",
+                    "pincode": "173212",
+                    "propertyType": "Apartment",
+                    "monthlyRent": 60000.0,
+                    "securityDeposit": 5000.0,
+                    "bedrooms": 2,
+                    "bathrooms": 2,
+                    "seating": 2,
+                    "area": "1200 sqft",
+                    "furnishing": "Yes",
+                    "amenities": [
+                        "Geyser",
+                        "T.V",
+                        "Table"
+                    ],
+                    "image_urls": [
+                        "https://res.cloudinary.com/dwyabk2ek/image/upload/v1756836399/momdo91kv9tms1p8oybx.jpg",
+                        "https://res.cloudinary.com/dwyabk2ek/image/upload/v1756836399/zaylumpxun0xem2joyac.jpg"
+                    ]
+                },
                 "tenant": {
                     "id": 2,
                     "username": "Yash",
+                    "email": "jsdogra717@gmail.com",
                     "mobile_no": "9123465789",
-                    "email": "yash@example.com"
-                }
-            },
-            {
-                "booking_id": 3,
-                "booking_date": "2025-08-03",
-                "status": "Confirmed",
-                "attendees": 4,
-                "listing_title": "4 BHK",
-                "listing_id": 2,
-                "tenant": {
-                    "id": 2,
-                    "username": "Yash",
-                    "mobile_no": "9123465789",
-                    "email": "yash@example.com"
+                    "bio": null,
+                    "address": null,
+                    "gender": null,
+                    "age": null,
+                    "profile_image_url": null
                 }
             }
-        ]
+        ],
+        "my_listings": [
+            {
+                "id": 1,
+                "title": "2 BHK",
+                "description": "This is a 2bhk flat",
+                "street_address": "Near Dreamvilla",
+                "city": "Solan",
+                "state": "Himachal Pradesh",
+                "pincode": "173212",
+                "propertyType": "Apartment",
+                "monthlyRent": 60000.0,
+                "securityDeposit": 5000.0,
+                "bedrooms": 2,
+                "bathrooms": 2,
+                "seating": 2,
+                "area": "1200 sqft",
+                "furnishing": "Yes",
+                "amenities": [
+                    "Geyser",
+                    "T.V",
+                    "Table"
+                ],
+                "image_urls": [
+                    "https://res.cloudinary.com/dwyabk2ek/image/upload/v1756836399/momdo91kv9tms1p8oybx.jpg",
+                    "https://res.cloudinary.com/dwyabk2ek/image/upload/v1756836399/zaylumpxun0xem2joyac.jpg"
+                ]
+            },
+            .
+            .
     }
 }
 
