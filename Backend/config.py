@@ -13,8 +13,8 @@ class Config:
 
     # JWT configuration
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
-    # JWT_ACCESS_TOKEN_EXPIRES = False
+    # JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
+    JWT_ACCESS_TOKEN_EXPIRES = False
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
     JWT_BLOCKLIST_ENABLED = True
     JWT_BLOCKLIST_TOKEN_CHECKS = ['access', 'refresh']
@@ -32,5 +32,6 @@ class Config:
 
     # frontend URL for CORS
     FRONTEND_URL = os.getenv("FRONTEND_URL")
+
 
 
