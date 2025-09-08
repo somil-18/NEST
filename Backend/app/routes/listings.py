@@ -270,15 +270,36 @@ class ListingResource(Resource):
     def patch(self, listing_id):
         user_id = int(get_jwt_identity())
         listing = Listing.query.get_or_404(listing_id, description="Listing not found")
-        if listing.owner_id != user_id: return {"success": False, "message": "Unauthorized"}, 403
+        if listing.owner_id != user_id:
+            return {"success": False, "message": "Unauthorized"}, 403
+
         data = request.get_json()
+
+        # Loop through all possible fields that can be updated
         for field in ['title', 'description', 'street_address', 'city', 'state', 'pincode', 'propertyType', 
-        'monthlyRent', 'securityDeposit', 'bedrooms', 'bathrooms', 'seating', 'area', 
-        'furnishing', 'amenities']:
+                      'monthlyRent', 'securityDeposit', 'bedrooms', 'bathrooms', 'seating', 'area', 
+                      'furnishing', 'amenities']:
+            
             if field in data:
-                setattr(listing, field, data[field])
+                # --- THIS IS THE NEW LOGIC ---
+                if field == 'amenities':
+                    # Special handling for amenities to append and avoid duplicates.
+                    existing_amenities = set(listing.amenities or [])
+                    new_amenities = set(data[field]) # Use set to handle duplicates in the input
+                    
+                    # Combine the two sets. This automatically handles duplicates.
+                    combined_amenities = existing_amenities.union(new_amenities)
+                    
+                    listing.amenities = list(combined_amenities)
+                    
+                    # CRITICAL: Tell the database that this JSON field has been modified in place.
+                    flag_modified(listing, "amenities")
+                else:
+                    # For all other fields, a direct replacement is correct.
+                    setattr(listing, field, data[field])
+        
         db.session.commit()
-        return self.get(listing_id)
+        return self.get(listing_id) # Return the full, updated listing
 
     @jwt_required()
     def delete(self, listing_id):
@@ -431,6 +452,7 @@ api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
+
 
 
 
