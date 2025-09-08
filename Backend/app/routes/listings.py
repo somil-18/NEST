@@ -24,24 +24,8 @@ def serialize_owner(owner):
         "gender": owner.gender, "age": owner.age
     }
 
-
-# listings 
-# def serialize_listing_summary(listing, status, avg_rating, review_count):
-#     return {
-#         "id": listing.id,
-#         "title": listing.title,
-#         "monthlyRent": listing.monthlyRent,
-#         "city": listing.city,
-#         "state": listing.state,
-#         "main_image_url": listing.image_urls[0] if listing.image_urls else None,
-#         "availability_status": status,
-#         "average_rating": round(float(avg_rating), 2) if avg_rating else None,
-#         "review_count": review_count or 0
-#     }
+# listings
 def serialize_listing_summary(listing, status, avg_rating, review_count):
-    """
-    Creates a complete dictionary of a listing's details for the main list view.
-    """
     return {
         "id": listing.id,
         "title": listing.title,
@@ -193,32 +177,11 @@ class ListingList(Resource):
 
 # update or delete listings
 class ListingResource(Resource):
-    # def get(self, listing_id):
-    #     listing = Listing.query.get_or_404(listing_id, description="Listing not found")
-    #     listing_data = {
-    #         "id": listing.id, "title": listing.title, "description": listing.description,
-    #         "street_address": listing.street_address, "city": listing.city, "state": listing.state, "pincode": listing.pincode,
-    #         "propertyType": listing.propertyType, "monthlyRent": listing.monthlyRent, "securityDeposit": listing.securityDeposit,
-    #         "bedrooms": listing.bedrooms, "bathrooms": listing.bathrooms, "seating": listing.seating,
-    #         "area": listing.area, "furnishing": listing.furnishing, "amenities": listing.amenities or [],
-    #         "image_urls": listing.image_urls or [], "owner": serialize_owner(listing.owner)
-    #     }
-    #     reviews_data = [{"id": r.id, "author_username": r.author.username, "rating": r.rating, 
-    #                     "comment": r.comment, "created_at": r.created_at.isoformat()} for r in listing.reviews]
-    #     listing_data["reviews"] = reviews_data
-    #     return {"success": True, "data": listing_data}
-    
     def get(self, listing_id):
-        """
-        Fetches a single listing's complete details, including its real-time status,
-        average rating, review count, and all of its reviews.
-        """
         listing = Listing.query.get_or_404(listing_id, description="Listing not found")
         today = date.today()
 
-        # --- THIS IS THE NEW LOGIC ADDED TO THIS ENDPOINT ---
-
-        # 1. Calculate the real-time availability status for today
+        # calculate the real-time availability status for today
         total_attendees_today = db.session.query(func.sum(Booking.attendees)).filter(
             Booking.listing_id == listing.id,
             Booking.appointment_date == today,
@@ -227,7 +190,7 @@ class ListingResource(Resource):
         
         status = "Booked" if listing.seating is not None and total_attendees_today >= listing.seating else "Available"
 
-        # 2. Calculate the average rating and review count
+        # calculate the average rating and review count
         review_stats = db.session.query(
             func.avg(Review.rating),
             func.count(Review.id)
@@ -235,9 +198,7 @@ class ListingResource(Resource):
         
         avg_rating, review_count = review_stats or (None, 0)
         
-        # -----------------------------------------------------------
-
-        # Serialize the main listing data, now including the calculated fields
+        # srialize the main listing data, now including the calculated fields
         listing_data = {
             "id": listing.id, "title": listing.title, "description": listing.description,
             "street_address": listing.street_address, "city": listing.city, "state": listing.state, "pincode": listing.pincode,
@@ -245,13 +206,12 @@ class ListingResource(Resource):
             "bedrooms": listing.bedrooms, "bathrooms": listing.bathrooms, "seating": listing.seating,
             "area": listing.area, "furnishing": listing.furnishing, "amenities": listing.amenities or [],
             "image_urls": listing.image_urls or [], "owner": serialize_owner(listing.owner),
-            # --- ADDED THE MISSING FIELDS ---
             "availability_status": status,
             "average_rating": round(float(avg_rating), 2) if avg_rating else None,
             "review_count": review_count
         }
 
-        # Fetch and serialize all reviews for this listing (this part is correct)
+        # fetch and serialize all reviews for this listing (this part is correct)
         reviews_data = []
         for review in listing.reviews:
             reviews_data.append({
@@ -281,21 +241,20 @@ class ListingResource(Resource):
                       'furnishing', 'amenities']:
             
             if field in data:
-                # --- THIS IS THE NEW LOGIC ---
                 if field == 'amenities':
-                    # Special handling for amenities to append and avoid duplicates.
+                    # special handling for amenities to append and avoid duplicates.
                     existing_amenities = set(listing.amenities or [])
                     new_amenities = set(data[field]) # Use set to handle duplicates in the input
                     
-                    # Combine the two sets. This automatically handles duplicates.
+                    # combine the two sets, automatically handles duplicates.
                     combined_amenities = existing_amenities.union(new_amenities)
                     
                     listing.amenities = list(combined_amenities)
                     
-                    # CRITICAL: Tell the database that this JSON field has been modified in place.
+                    # tell the database that this JSON field has been modified in place.
                     flag_modified(listing, "amenities")
                 else:
-                    # For all other fields, a direct replacement is correct.
+                    # for all other fields, a direct replacement
                     setattr(listing, field, data[field])
         
         db.session.commit()
@@ -452,6 +411,7 @@ api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
+
 
 
 
