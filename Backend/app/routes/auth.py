@@ -266,10 +266,8 @@ class UserProfileUpdate(Resource):
         user = User.query.get_or_404(user_id)
         data = {}
 
-        # --- THIS IS THE NEW, FLEXIBLE LOGIC ---
-        # Check if the request is multipart/form-data
+        # This flexible logic correctly handles both request types
         if 'data' in request.form or 'image' in request.files:
-            # Handle image upload if present
             if 'image' in request.files:
                 file = request.files['image']
                 if file and file.filename != '':
@@ -285,20 +283,19 @@ class UserProfileUpdate(Resource):
                     except Exception as e:
                         return {"success": False, "message": f"Image upload failed: {str(e)}"}, 500
             
-            # Handle text data if present
             if 'data' in request.form:
                 try:
                     data = json.loads(request.form['data'])
                 except json.JSONDecodeError:
                     return {"success": False, "message": "Invalid JSON in 'data' field"}, 400
         else:
-            # If not multipart, assume it's a standard application/json request
             data = request.get_json()
             if data is None:
                 return {"success": False, "message": "Invalid JSON or no data provided"}, 400
         
-        # --- The validation and update logic is now applied to the 'data' dictionary ---
-        # This part of the code remains the same, but it now works for both request types.
+        # --- THIS IS THE CORRECTED UPDATE LOGIC ---
+        # Each field is now checked independently at the correct indentation level.
+
         if "username" in data:
             new_username = data["username"]
             if User.query.filter(User.username == new_username, User.id != user_id).first():
@@ -311,13 +308,29 @@ class UserProfileUpdate(Resource):
                 return {"success": False, "message": "Invalid mobile number format"}, 400
             user.mobile_no = mobile_no
             
-            if "age" in data: user.age = data.get("age")
-            if "gender" in data: user.gender = data.get("gender")
-            if "bio" in data: user.bio = data.get("bio")
-            if "address" in data: user.address = data.get("address")
+        if "age" in data and data["age"] is not None:
+            try:
+                age_int = int(data["age"])
+                if not (18 <= age_int <= 100):
+                    return {"success": False, "message": "Age must be between 18 to 100."}, 400
+                user.age = age_int
+            except (ValueError, TypeError):
+                return {"success": False, "message": "Age must be a valid number."}, 400
+
+        if "gender" in data and data["gender"] is not None:
+            gender = data["gender"]
+            if gender.lower() not in ["male", "female", "other"]:
+                return {"success": False, "message": "Invalid gender. Must be Male, Female, or Other."}, 400
+            user.gender = gender.capitalize()
+
+        if "bio" in data:
+            user.bio = data.get("bio")
+            
+        if "address" in data:
+            user.address = data.get("address")
 
         db.session.commit()
-        return UserProfileFetch().get()
+        return UserProfileFetch().get() # Return the full, updated profile
 
 
 # delete profile
@@ -345,6 +358,7 @@ api.add_resource(TokenRefresh, "/refresh")
 api.add_resource(UserProfileFetch, "/profile")
 api.add_resource(UserProfileUpdate, "/profile")
 api.add_resource(UserProfileDelete, "/profile")
+
 
 
 
