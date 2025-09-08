@@ -258,42 +258,58 @@ class UserProfileFetch(Resource):
 class UserProfileUpdate(Resource):
     @jwt_required()
     def patch(self):
+        """
+        Updates the user's profile. This endpoint is flexible and handles both
+        'multipart/form-data' (for image uploads) and 'application/json' (for text-only updates).
+        """
         user_id = int(get_jwt_identity())
-        user = User.query.get_or_404(user_id, description="User not found")
+        user = User.query.get_or_404(user_id)
+        data = {}
 
-        # image validations
-        if 'image' in request.files:
-            file = request.files['image']
-            if file and file.filename != '':
-                if not allowed_file(file.filename):
-                    return {"success": False, "message": f"Invalid file type: {file.filename}."}, 400
-                file.seek(0, os.SEEK_END)
-                if file.tell() > MAX_CONTENT_LENGTH:
-                    return {"success": False, "message": f"File too large: {file.filename}."}, 400
-                file.seek(0)
+        # --- THIS IS THE NEW, FLEXIBLE LOGIC ---
+        # Check if the request is multipart/form-data
+        if 'data' in request.form or 'image' in request.files:
+            # Handle image upload if present
+            if 'image' in request.files:
+                file = request.files['image']
+                if file and file.filename != '':
+                    if not allowed_file(file.filename):
+                        return {"success": False, "message": f"Invalid file type: {file.filename}."}, 400
+                    file.seek(0, os.SEEK_END)
+                    if file.tell() > MAX_CONTENT_LENGTH:
+                        return {"success": False, "message": f"File too large: {file.filename}."}, 400
+                    file.seek(0)
+                    try:
+                        upload_result = cloudinary.uploader.upload(file)
+                        user.profile_image_url = upload_result['secure_url']
+                    except Exception as e:
+                        return {"success": False, "message": f"Image upload failed: {str(e)}"}, 500
+            
+            # Handle text data if present
+            if 'data' in request.form:
                 try:
-                    upload_result = cloudinary.uploader.upload(file)
-                    user.profile_image_url = upload_result['secure_url']
-                except Exception as e:
-                    return {"success": False, "message": f"Image upload failed: {str(e)}"}, 500
+                    data = json.loads(request.form['data'])
+                except json.JSONDecodeError:
+                    return {"success": False, "message": "Invalid JSON in 'data' field"}, 400
+        else:
+            # If not multipart, assume it's a standard application/json request
+            data = request.get_json()
+            if data is None:
+                return {"success": False, "message": "Invalid JSON or no data provided"}, 400
+        
+        # --- The validation and update logic is now applied to the 'data' dictionary ---
+        # This part of the code remains the same, but it now works for both request types.
+        if "username" in data:
+            new_username = data["username"]
+            if User.query.filter(User.username == new_username, User.id != user_id).first():
+                return {"success": False, "message": "Username already taken"}, 409
+            user.username = new_username
 
-        if 'data' in request.form:
-            try:
-                data = json.loads(request.form['data'])
-            except json.JSONDecodeError:
-                return {"success": False, "message": "Invalid JSON format in 'data' field"}, 400
-
-            if "username" in data:
-                new_username = data["username"]
-                if User.query.filter(User.username == new_username, User.id != user_id).first():
-                    return {"success": False, "message": "Username already taken"}, 409
-                user.username = new_username
-
-            if "mobile_no" in data and data["mobile_no"] is not None:
-                mobile_no = str(data["mobile_no"])
-                if not re.match(mobile_pattern, mobile_no):
-                    return {"success": False, "message": "Invalid mobile number format"}, 400
-                user.mobile_no = mobile_no
+        if "mobile_no" in data and data["mobile_no"] is not None:
+            mobile_no = str(data["mobile_no"])
+            if not re.match(mobile_pattern, mobile_no):
+                return {"success": False, "message": "Invalid mobile number format"}, 400
+            user.mobile_no = mobile_no
             
             if "age" in data: user.age = data.get("age")
             if "gender" in data: user.gender = data.get("gender")
@@ -329,6 +345,7 @@ api.add_resource(TokenRefresh, "/refresh")
 api.add_resource(UserProfileFetch, "/profile")
 api.add_resource(UserProfileUpdate, "/profile")
 api.add_resource(UserProfileDelete, "/profile")
+
 
 
 
