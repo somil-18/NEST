@@ -2,7 +2,7 @@
 from flask import request, Blueprint
 from flask_restful import Api, Resource
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from sqlalchemy import func, cast, Date # <-- Make sure cast and Date are imported
+from sqlalchemy import func, cast, Date
 from sqlalchemy.orm import joinedload
 from datetime import date
 
@@ -13,7 +13,7 @@ owner_bp = Blueprint('owner', __name__)
 api = Api(owner_bp)
 
 
-# --- Helper functions to format the response data ---
+# --- Helper Functions ---
 
 def serialize_tenant_for_dashboard(user):
     """Safely serializes a tenant's FULL public profile for the owner's dashboard."""
@@ -25,8 +25,9 @@ def serialize_tenant_for_dashboard(user):
         "gender": user.gender, "age": user.age, "profile_image_url": user.profile_image_url
     }
 
-def serialize_listing_full_detail(listing):
-    """Creates a complete, detailed dictionary for a listing."""
+# UPDATED: This serializer now includes the availability_status
+def serialize_listing_for_dashboard(listing, status):
+    """Creates a complete, detailed dictionary for a listing, including its status."""
     if not listing: return None
     return {
         "id": listing.id, "pid": listing.pid, "ownerName": listing.ownerName,
@@ -37,20 +38,29 @@ def serialize_listing_full_detail(listing):
         "securityDeposit": listing.securityDeposit, "bedrooms": listing.bedrooms,
         "bathrooms": listing.bathrooms, "seating": listing.seating,
         "area": listing.area, "furnishing": listing.furnishing,
-        "amenities": listing.amenities or [], "image_urls": listing.image_urls or []
+        "amenities": listing.amenities or [], "image_urls": listing.image_urls or [],
+        "availability_status": status # <-- The new field
     }
 
 def serialize_booking_for_dashboard(booking):
-    """Serializes a booking with the FULL nested listing and tenant details."""
+    """Serializes a booking with FULL nested listing and tenant details."""
     if not booking: return None
+    
+    # We must also calculate the status for the nested listing here
+    today = date.today()
+    total_attendees_today = db.session.query(func.sum(Booking.attendees)).filter(
+        Booking.listing_id == booking.listing_id,
+        cast(Booking.created_at, Date) == today,
+        Booking.status.in_(['Confirmed', 'Pending'])
+    ).scalar() or 0
+    status = "Booked" if booking.listing.seating is not None and total_attendees_today >= booking.listing.seating else "Available"
     
     return {
         "booking_id": booking.id,
-        # --- FIXED: Use created_at to get the booking date ---
         "booking_date": booking.created_at.date().isoformat(),
         "status": booking.status,
         "attendees": booking.attendees,
-        "listing": serialize_listing_full_detail(booking.listing),
+        "listing": serialize_listing_for_dashboard(booking.listing, status), # Pass the status
         "tenant": serialize_tenant_for_dashboard(booking.tenant)
     }
 
@@ -67,10 +77,8 @@ class OwnerDashboard(Resource):
         today = date.today()
         owner_listing_ids = db.session.query(Listing.id).filter(Listing.owner_id == user_id).scalar_subquery()
         
-        # --- Metric Calculations (Corrected) ---
+        # --- (Metric calculations are corrected to use created_at) ---
         total_listings = db.session.query(func.count(Listing.id)).filter(Listing.owner_id == user_id).scalar() or 0
-
-        # FIXED: Revenue calculation now uses created_at
         total_revenue = db.session.query(func.sum(Listing.monthlyRent)).join(
             Booking, Booking.listing_id == Listing.id
         ).filter(
@@ -78,25 +86,36 @@ class OwnerDashboard(Resource):
             Booking.status == 'Confirmed',
             cast(Booking.created_at, Date) < today
         ).scalar() or 0.0
-
         total_bookings = db.session.query(func.count(Booking.id)).filter(
             Booking.listing_id.in_(owner_listing_ids),
             Booking.status == 'Confirmed'
         ).scalar() or 0
         
-        # --- Booking Query (Corrected) ---
-        # FIXED: Order by created_at instead of the old appointment_date
+        # --- THIS IS THE NEW LOGIC FOR my_listings ---
+        my_listings_query = Listing.query.filter(Listing.owner_id == user_id).order_by(Listing.title).all()
+        
+        serialized_listings = []
+        # We loop through each of the owner's listings to get its individual, accurate status.
+        for l in my_listings_query:
+            total_attendees_today = db.session.query(func.sum(Booking.attendees)).filter(
+                Booking.listing_id == l.id,
+                cast(Booking.created_at, Date) == today,
+                Booking.status.in_(['Confirmed', 'Pending'])
+            ).scalar() or 0
+            
+            status = "Booked" if l.seating is not None and total_attendees_today >= l.seating else "Available"
+            
+            # Use the new serializer that includes the status
+            serialized_listings.append(serialize_listing_for_dashboard(l, status))
+        
+        # --- (The query for all_bookings remains the same) ---
         all_bookings = Booking.query.filter(
             Booking.listing_id.in_(owner_listing_ids)
         ).options(
             joinedload(Booking.listing),
             joinedload(Booking.tenant)
         ).order_by(Booking.created_at.desc()).all()
-
-        # --- NEW: Query to get all of the owner's listings ---
-        my_listings = Listing.query.filter(Listing.owner_id == user_id).order_by(Listing.title).all()
-
-        serialized_bookings = [serialize_booking_for_dashboard(b) for b in all_bookings]
+        serialized_bookings_list = [serialize_booking_for_dashboard(b) for b in all_bookings]
         
         dashboard_data = {
             "summary_stats": {
@@ -104,9 +123,8 @@ class OwnerDashboard(Resource):
                 "total_bookings": total_bookings,
                 "total_revenue": round(total_revenue, 2)
             },
-            "all_bookings": [b for b in serialized_bookings if b is not None],
-            # --- NEW DATA: A full list of all properties owned by the user ---
-            "my_listings": [serialize_listing_full_detail(l) for l in my_listings]
+            "all_bookings": [b for b in serialized_bookings_list if b is not None],
+            "my_listings": serialized_listings # <-- Use the new, calculated list
         }
         
         return {"success": True, "data": dashboard_data}
