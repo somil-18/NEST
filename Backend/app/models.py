@@ -55,6 +55,9 @@ class Listing(db.Model):
     area = db.Column(db.String(50), nullable=True)
     furnishing = db.Column(db.String(50), nullable=True)
     amenities = db.Column(JSON)
+    pid = db.Column(db.String(50), unique=True, nullable=True, index=True)
+    ownerName = db.Column(db.String(50), nullable=True)
+    is_verified = db.Column(db.Boolean, default=False)
     image_urls = db.Column(db.JSON, nullable=True)
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
 
@@ -63,16 +66,16 @@ class Listing(db.Model):
 
 
 class Booking(db.Model):
+    """Represents an appointment to view a listing, always for the current day."""
     __tablename__ = 'booking'
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)   
     listing_id = db.Column(db.Integer, db.ForeignKey("listing.id"), nullable=False, index=True) 
-    appointment_date = db.Column(db.Date, nullable=False, index=True)
     attendees = db.Column(db.Integer, nullable=False, default=1)
-
     status = db.Column(db.String(20), default="Pending")
     created_at = db.Column(db.DateTime, server_default=db.func.now())
+
 
 class Review(db.Model):
     __tablename__ = 'review'
