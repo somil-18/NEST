@@ -41,6 +41,7 @@ def serialize_listing_for_favorites(listing):
         "area": listing.area,
         "furnishing": listing.furnishing,
         "amenities": listing.amenities or [],
+        "pid": listing.pid, "ownerName": listing.ownerName, "is_verified": listing.is_verified,
         "image_urls": listing.image_urls or [], # Return all images
         "owner": serialize_owner_summary(listing.owner) # Include nested owner details
     }
