@@ -11,7 +11,6 @@ import cloudinary.uploader
 
 from ..extensions import db
 from ..models import User, Listing, Booking, Review
-from ..utils.validators import allowed_file, MAX_CONTENT_LENGTH
 
 listings_bp = Blueprint('listings', __name__)
 api = Api(listings_bp)
@@ -239,22 +238,23 @@ class ListingResource(Resource):
             return {"success": False, "message": "Unauthorized"}, 403
 
         data = {}
-        # --- Flexible logic to handle both request types ---
+        # --- NEW: Flexible logic to handle both request types ---
+        # Check if the request is multipart/form-data
         if 'data' in request.form or 'images' in request.files:
-            # Handle image upload if present. This REPLACES old images.
+            # Handle image upload if present. This REPLACES the old image list.
             if 'images' in request.files:
                 files = request.files.getlist('images')
                 if files and files[0].filename != '':
                     uploaded_urls = []
                     for file in files:
-                        # --- THIS IS THE MISSING VALIDATION LOGIC ---
+                        # --- Image Validation Logic ---
                         if not allowed_file(file.filename):
                             return {"success": False, "message": f"Invalid file type: {file.filename}."}, 400
                         file.seek(0, os.SEEK_END)
                         if file.tell() > MAX_CONTENT_LENGTH:
                             return {"success": False, "message": f"File too large: {file.filename}."}, 400
                         file.seek(0)
-                        # ---------------------------------------------
+                        # -----------------------------
                         try:
                             upload_result = cloudinary.uploader.upload(file)
                             uploaded_urls.append(upload_result['secure_url'])
@@ -275,6 +275,7 @@ class ListingResource(Resource):
                 return {"success": False, "message": "Invalid JSON or no data provided"}, 400
         
         # --- Update loop with correct amenities handling ---
+        # This loop now correctly REPLACES the amenities list, allowing for removal.
         for field in ['title', 'description', 'street_address', 'city', 'state', 'pincode', 'propertyType', 
                       'monthlyRent', 'securityDeposit', 'bedrooms', 'bathrooms', 'seating', 'area', 
                       'furnishing', 'amenities']:
@@ -284,11 +285,13 @@ class ListingResource(Resource):
         # Manually flag JSON fields if they were part of the update.
         if 'amenities' in data:
             flag_modified(listing, "amenities")
+        # Also flag if new images were uploaded (from a multipart request)
         if 'images' in request.files and request.files.getlist('images')[0].filename != '':
             flag_modified(listing, "image_urls")
 
         db.session.commit()
         return self.get(listing_id) # Return the full, updated listing
+    
     @jwt_required()
     def delete(self, listing_id):
         user_id = int(get_jwt_identity())
@@ -440,6 +443,7 @@ api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
+
 
 
 
