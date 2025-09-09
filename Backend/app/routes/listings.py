@@ -50,6 +50,9 @@ def serialize_listing_summary(listing, status, avg_rating, review_count):
         "review_count": review_count or 0
     }
 
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+MAX_CONTENT_LENGTH = 5 * 1024 * 1024 # 5 Megabytes
+
 # image allowed extensions
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 def allowed_file(filename):
@@ -180,7 +183,7 @@ class ListingResource(Resource):
     def get(self, listing_id):
         """Fetches a single listing's complete details."""
         listing = Listing.query.get_or_404(listing_id)
-        listing_data = serialize_listing_full_detail(listing)
+        listing_data = serialize_listing_summary(listing)
 
         # Add calculated stats
         today = date.today()
@@ -196,7 +199,7 @@ class ListingResource(Resource):
 
         # Add reviews
         reviews_data = [{"id": r.id, "author_username": r.author.username, "rating": r.rating, 
-                         "comment": r.comment, "created_at": r.created_at.isoformat()} for r in listing.reviews]
+                        "comment": r.comment, "created_at": r.created_at.isoformat()} for r in listing.reviews]
         listing_data["reviews"] = reviews_data
         
         return {"success": True, "data": listing_data}
@@ -243,8 +246,8 @@ class ListingResource(Resource):
         
         # Update loop with correct amenities handling
         for field in ['title', 'description', 'street_address', 'city', 'state', 'pincode', 'propertyType', 
-                      'monthlyRent', 'securityDeposit', 'bedrooms', 'bathrooms', 'seating', 'area', 
-                      'furnishing', 'amenities']:
+                    'monthlyRent', 'securityDeposit', 'bedrooms', 'bathrooms', 'seating', 'area', 
+                    'furnishing', 'amenities']:
             if field in data:
                 setattr(listing, field, data[field])
         
@@ -408,7 +411,6 @@ api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
-
 
 
 
