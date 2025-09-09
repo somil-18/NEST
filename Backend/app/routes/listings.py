@@ -6,7 +6,7 @@ from flask import request, Blueprint
 from flask_restful import Api, Resource
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_, cast, String, func
-from sqlalchemy.orm import flag_modified  # <-- CORRECTED IMPORT
+from sqlalchemy.orm.attributes import flag_modified
 import cloudinary.uploader
 
 from ..extensions import db
@@ -336,3 +336,4 @@ api.add_resource(ListingResource, "/listings/<int:listing_id>")
 api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
+
