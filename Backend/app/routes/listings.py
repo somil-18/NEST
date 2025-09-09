@@ -178,83 +178,52 @@ class ListingList(Resource):
 # update or delete listings
 class ListingResource(Resource):
     def get(self, listing_id):
-        listing = Listing.query.get_or_404(listing_id, description="Listing not found")
+        """Fetches a single listing's complete details."""
+        listing = Listing.query.get_or_404(listing_id)
+        listing_data = serialize_listing_full_detail(listing)
+
+        # Add calculated stats
         today = date.today()
-
-        # calculate the real-time availability status for today
         total_attendees_today = db.session.query(func.sum(Booking.attendees)).filter(
-            Booking.listing_id == listing.id,
-            Booking.appointment_date == today,
-            Booking.status.in_(['Confirmed', 'Pending'])
-        ).scalar() or 0
-        
-        status = "Booked" if listing.seating is not None and total_attendees_today >= listing.seating else "Available"
+            Booking.listing_id == listing.id, Booking.appointment_date == today,
+            Booking.status.in_(['Confirmed', 'Pending'])).scalar() or 0
+        listing_data['availability_status'] = "Booked" if listing.seating is not None and total_attendees_today >= listing.seating else "Available"
 
-        # calculate the average rating and review count
-        review_stats = db.session.query(
-            func.avg(Review.rating),
-            func.count(Review.id)
-        ).filter(Review.listing_id == listing.id).first()
-        
+        review_stats = db.session.query(func.avg(Review.rating), func.count(Review.id)).filter(Review.listing_id == listing.id).first()
         avg_rating, review_count = review_stats or (None, 0)
-        
-        # srialize the main listing data, now including the calculated fields
-        listing_data = {
-            "id": listing.id, "title": listing.title, "description": listing.description,
-            "street_address": listing.street_address, "city": listing.city, "state": listing.state, "pincode": listing.pincode,
-            "propertyType": listing.propertyType, "monthlyRent": listing.monthlyRent, "securityDeposit": listing.securityDeposit,
-            "bedrooms": listing.bedrooms, "bathrooms": listing.bathrooms, "seating": listing.seating,
-            "area": listing.area, "furnishing": listing.furnishing, "amenities": listing.amenities or [],
-            "image_urls": listing.image_urls or [], "owner": serialize_owner(listing.owner),
-            "availability_status": status,
-            "average_rating": round(float(avg_rating), 2) if avg_rating else None,
-            "review_count": review_count
-        }
+        listing_data['average_rating'] = round(float(avg_rating), 2) if avg_rating else None
+        listing_data['review_count'] = review_count
 
-        # fetch and serialize all reviews for this listing (this part is correct)
-        reviews_data = []
-        for review in listing.reviews:
-            reviews_data.append({
-                "id": review.id,
-                "author_username": review.author.username,
-                "rating": review.rating,
-                "comment": review.comment,
-                "created_at": review.created_at.isoformat()
-            })
-        
+        # Add reviews
+        reviews_data = [{"id": r.id, "author_username": r.author.username, "rating": r.rating, 
+                         "comment": r.comment, "created_at": r.created_at.isoformat()} for r in listing.reviews]
         listing_data["reviews"] = reviews_data
         
         return {"success": True, "data": listing_data}
     
     @jwt_required()
     def patch(self, listing_id):
-        """
-        Updates a listing. Handles both multipart/form-data (with images)
-        and application/json (text-only) requests with full validation.
-        """
         user_id = int(get_jwt_identity())
         listing = Listing.query.get_or_404(listing_id)
         if listing.owner_id != user_id:
             return {"success": False, "message": "Unauthorized"}, 403
 
         data = {}
-        # --- NEW: Flexible logic to handle both request types ---
-        # Check if the request is multipart/form-data
+        # Flexible logic to handle both request types
         if 'data' in request.form or 'images' in request.files:
-            # Handle image upload if present. This REPLACES old images.
             if 'images' in request.files:
                 files = request.files.getlist('images')
                 if files and files[0].filename != '':
                     uploaded_urls = []
                     for file in files:
-                        # --- Image Validation Logic ---
+                        # --- THIS IS THE MISSING VALIDATION LOGIC ---
                         if not allowed_file(file.filename):
                             return {"success": False, "message": f"Invalid file type: {file.filename}."}, 400
                         file.seek(0, os.SEEK_END)
                         if file.tell() > MAX_CONTENT_LENGTH:
                             return {"success": False, "message": f"File too large: {file.filename}."}, 400
                         file.seek(0)
-                        # -----------------------------
+                        # ---------------------------------------------
                         try:
                             upload_result = cloudinary.uploader.upload(file)
                             uploaded_urls.append(upload_result['secure_url'])
@@ -262,35 +231,30 @@ class ListingResource(Resource):
                             return {"success": False, "message": f"Image upload failed: {str(e)}"}, 500
                     listing.image_urls = uploaded_urls
             
-            # Handle text data if present
             if 'data' in request.form:
                 try:
                     data = json.loads(request.form['data'])
                 except json.JSONDecodeError:
                     return {"success": False, "message": "Invalid JSON in 'data' field"}, 400
         else:
-            # If not multipart, assume it's a standard application/json request
             data = request.get_json()
             if data is None:
                 return {"success": False, "message": "Invalid JSON or no data provided"}, 400
         
-        # --- Update loop with correct amenities handling ---
-        # This loop now correctly REPLACES the amenities list, allowing for removal.
+        # Update loop with correct amenities handling
         for field in ['title', 'description', 'street_address', 'city', 'state', 'pincode', 'propertyType', 
                       'monthlyRent', 'securityDeposit', 'bedrooms', 'bathrooms', 'seating', 'area', 
                       'furnishing', 'amenities']:
             if field in data:
                 setattr(listing, field, data[field])
         
-        # Manually flag JSON fields if they were part of the update.
         if 'amenities' in data:
             flag_modified(listing, "amenities")
-        # Also flag if new images were uploaded (from a multipart request)
         if 'images' in request.files and request.files.getlist('images')[0].filename != '':
             flag_modified(listing, "image_urls")
 
         db.session.commit()
-        return self.get(listing_id) # Return the full, updated listing
+        return self.get(listing_id)
 
     
     @jwt_required()
@@ -444,6 +408,7 @@ api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
+
 
 
 
