@@ -267,7 +267,7 @@ class ListingResource(Resource):
         if listing.owner_id != user_id: return {"success": False, "message": "Unauthorized"}, 403
         db.session.delete(listing)
         db.session.commit()
-        return '', 204
+        return {"success": True, "message": "Listing deleted successfully"}, 200
 
 
 # upload more images
@@ -411,6 +411,7 @@ api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
+
 
 
 
