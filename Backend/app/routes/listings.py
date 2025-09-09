@@ -228,35 +228,63 @@ class ListingResource(Resource):
     
     @jwt_required()
     def patch(self, listing_id):
+        """
+        Updates a listing. Handles both multipart/form-data (with images)
+        and application/json (text-only) requests.
+        """
         user_id = int(get_jwt_identity())
-        listing = Listing.query.get_or_404(listing_id, description="Listing not found")
+        listing = Listing.query.get_or_404(listing_id)
         if listing.owner_id != user_id:
             return {"success": False, "message": "Unauthorized"}, 403
 
-        data = request.get_json()
-
-        # Loop through all possible fields that can be updated
+        data = {}
+        # --- NEW: Flexible logic to handle both request types ---
+        if 'data' in request.form or 'images' in request.files:
+            # Handle image upload if present. This REPLACES old images.
+            if 'images' in request.files:
+                files = request.files.getlist('images')
+                if files and files[0].filename != '':
+                    uploaded_urls = []
+                    for file in files:
+                        if not allowed_file(file.filename):
+                            return {"success": False, "message": f"Invalid file type: {file.filename}."}, 400
+                        file.seek(0, os.SEEK_END)
+                        if file.tell() > MAX_CONTENT_LENGTH:
+                            return {"success": False, "message": f"File too large: {file.filename}."}, 400
+                        file.seek(0)
+                        try:
+                            upload_result = cloudinary.uploader.upload(file)
+                            uploaded_urls.append(upload_result['secure_url'])
+                        except Exception as e:
+                            return {"success": False, "message": f"Image upload failed: {str(e)}"}, 500
+                    listing.image_urls = uploaded_urls
+            
+            # Handle text data if present
+            if 'data' in request.form:
+                try:
+                    data = json.loads(request.form['data'])
+                except json.JSONDecodeError:
+                    return {"success": False, "message": "Invalid JSON in 'data' field"}, 400
+        else:
+            # If not multipart, assume it's a standard application/json request
+            data = request.get_json()
+            if data is None:
+                return {"success": False, "message": "Invalid JSON or no data provided"}, 400
+        
+        # --- UPDATED: Simplified update logic ---
+        # This loop now correctly REPLACES the amenities list, allowing for removal.
         for field in ['title', 'description', 'street_address', 'city', 'state', 'pincode', 'propertyType', 
                       'monthlyRent', 'securityDeposit', 'bedrooms', 'bathrooms', 'seating', 'area', 
                       'furnishing', 'amenities']:
-            
             if field in data:
-                if field == 'amenities':
-                    # special handling for amenities to append and avoid duplicates.
-                    existing_amenities = set(listing.amenities or [])
-                    new_amenities = set(data[field]) # Use set to handle duplicates in the input
-                    
-                    # combine the two sets, automatically handles duplicates.
-                    combined_amenities = existing_amenities.union(new_amenities)
-                    
-                    listing.amenities = list(combined_amenities)
-                    
-                    # tell the database that this JSON field has been modified in place.
-                    flag_modified(listing, "amenities")
-                else:
-                    # for all other fields, a direct replacement
-                    setattr(listing, field, data[field])
+                setattr(listing, field, data[field])
         
+        # CRITICAL: Manually flag JSON fields if they were part of the update.
+        if 'amenities' in data:
+            flag_modified(listing, "amenities")
+        if 'images' in request.files: # Also flag if new images were uploaded
+            flag_modified(listing, "image_urls")
+
         db.session.commit()
         return self.get(listing_id) # Return the full, updated listing
 
@@ -411,6 +439,7 @@ api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
+
 
 
 
