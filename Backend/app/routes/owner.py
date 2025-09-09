@@ -50,6 +50,7 @@ def serialize_listing_full_detail(listing):
         "area": listing.area,
         "furnishing": listing.furnishing,
         "amenities": listing.amenities or [],
+        "pid": listing.pid, "ownerName": listing.ownerName, "is_verified": listing.is_verified,
         "image_urls": listing.image_urls or []
     }
 
