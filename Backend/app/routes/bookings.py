@@ -84,18 +84,12 @@ class BookingCreate(Resource):
         data = request.get_json()
         
         listing_id = data.get("listing_id")
-        booking_date_str = data.get("booking_date")
         attendees = data.get("attendees", 1)
 
-        if not all([listing_id, booking_date_str]):
-            return {"success": False, "message": "Missing listing_id or booking_date"}, 400
+        if not all([listing_id]):
+            return {"success": False, "message": "Missing listing_id"}, 400
 
         # ... (attendees and date format validation remains the same)
-            
-        try:
-            booking_date = datetime.strptime(booking_date_str, "%Y-%m-%d").date()
-        except ValueError:
-            return {"success": False, "message": "Invalid date format, use YYYY-MM-DD"}, 400
 
         listing = Listing.query.get_or_404(listing_id, description="Listing not found")
         if listing.owner_id == user_id:
@@ -197,6 +191,7 @@ api.add_resource(MyBookings, "/bookings/my")
 api.add_resource(OwnerBookings, "/bookings/owner")
 api.add_resource(BookingUpdate, "/bookings/<int:booking_id>")
 api.add_resource(BookingCancel, "/bookings/<int:booking_id>/cancel")
+
 
 
 
