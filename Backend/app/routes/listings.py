@@ -1,4 +1,4 @@
-# --- Cleaned up and consolidated imports ---
+
 import os
 import json
 from datetime import date
@@ -182,6 +182,7 @@ class ListingResource(Resource):
         data = {}
         # Flexible logic to handle both request types
         if 'data' in request.form or 'images' in request.files:
+            # --- THIS IS THE CORRECTED IMAGE HANDLING LOGIC ---
             if 'images' in request.files:
                 files = request.files.getlist('images')
                 if files and files[0].filename != '':
@@ -193,23 +194,35 @@ class ListingResource(Resource):
                         if file.tell() > MAX_CONTENT_LENGTH:
                             return {"success": False, "message": f"File too large: {file.filename}."}, 400
                         file.seek(0)
-                        upload_result = cloudinary.uploader.upload(file)
-                        uploaded_urls.append(upload_result['secure_url'])
-                    listing.image_urls = uploaded_urls
+                        try:
+                            upload_result = cloudinary.uploader.upload(file)
+                            uploaded_urls.append(upload_result['secure_url'])
+                        except Exception as e:
+                            return {"success": False, "message": f"Image upload failed: {str(e)}"}, 500
+                    
+                    # This is the fix: Extend the existing list instead of replacing it.
+                    if listing.image_urls is None:
+                        listing.image_urls = []
+                    listing.image_urls.extend(uploaded_urls)
             
             if 'data' in request.form:
-                data = json.loads(request.form['data'])
+                try:
+                    data = json.loads(request.form['data'])
+                except json.JSONDecodeError:
+                    return {"success": False, "message": "Invalid JSON in 'data' field"}, 400
         else:
             data = request.get_json()
             if data is None:
                 return {"success": False, "message": "Invalid JSON or no data provided"}, 400
         
+        # Update loop for text fields
         for field in ['title', 'description', 'street_address', 'city', 'state', 'pincode', 'propertyType', 
                       'monthlyRent', 'securityDeposit', 'bedrooms', 'bathrooms', 'seating', 'area', 
                       'furnishing', 'amenities']:
             if field in data:
                 setattr(listing, field, data[field])
         
+        # Manually flag JSON fields if they were part of the update.
         if 'amenities' in data:
             flag_modified(listing, "amenities")
         if 'images' in request.files and request.files.getlist('images')[0].filename != '':
@@ -336,4 +349,5 @@ api.add_resource(ListingResource, "/listings/<int:listing_id>")
 api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
+
 
