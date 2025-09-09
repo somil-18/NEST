@@ -241,7 +241,7 @@ class ListingResource(Resource):
         # --- NEW: Flexible logic to handle both request types ---
         # Check if the request is multipart/form-data
         if 'data' in request.form or 'images' in request.files:
-            # Handle image upload if present. This REPLACES the old image list.
+            # Handle image upload if present. This REPLACES old images.
             if 'images' in request.files:
                 files = request.files.getlist('images')
                 if files and files[0].filename != '':
@@ -291,6 +291,7 @@ class ListingResource(Resource):
 
         db.session.commit()
         return self.get(listing_id) # Return the full, updated listing
+
     
     @jwt_required()
     def delete(self, listing_id):
@@ -443,6 +444,7 @@ api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
+
 
 
 
