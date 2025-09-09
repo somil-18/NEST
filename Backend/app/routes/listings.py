@@ -174,62 +174,63 @@ class ListingResource(Resource):
     
     @jwt_required()
     def patch(self, listing_id):
+        """
+        Updates a listing. Handles a single multipart/form-data request that can contain:
+        - 'data': A JSON string with all text fields to update. This JSON can
+                  optionally include an 'image_urls' key with the final list of existing URLs to keep.
+        - 'images': A list of new image files to be uploaded and added.
+        """
         user_id = int(get_jwt_identity())
         listing = Listing.query.get_or_404(listing_id)
         if listing.owner_id != user_id:
             return {"success": False, "message": "Unauthorized"}, 403
 
         data = {}
-        # Flexible logic to handle both request types
-        if 'data' in request.form or 'images' in request.files:
-            # --- THIS IS THE CORRECTED IMAGE HANDLING LOGIC ---
-            if 'images' in request.files:
-                files = request.files.getlist('images')
-                if files and files[0].filename != '':
-                    uploaded_urls = []
-                    for file in files:
-                        if not allowed_file(file.filename):
-                            return {"success": False, "message": f"Invalid file type: {file.filename}."}, 400
-                        file.seek(0, os.SEEK_END)
-                        if file.tell() > MAX_CONTENT_LENGTH:
-                            return {"success": False, "message": f"File too large: {file.filename}."}, 400
-                        file.seek(0)
-                        try:
-                            upload_result = cloudinary.uploader.upload(file)
-                            uploaded_urls.append(upload_result['secure_url'])
-                        except Exception as e:
-                            return {"success": False, "message": f"Image upload failed: {str(e)}"}, 500
-                    
-                    # This is the fix: Extend the existing list instead of replacing it.
-                    if listing.image_urls is None:
-                        listing.image_urls = []
-                    listing.image_urls.extend(uploaded_urls)
-            
-            if 'data' in request.form:
-                try:
-                    data = json.loads(request.form['data'])
-                except json.JSONDecodeError:
-                    return {"success": False, "message": "Invalid JSON in 'data' field"}, 400
-        else:
-            data = request.get_json()
-            if data is None:
-                return {"success": False, "message": "Invalid JSON or no data provided"}, 400
+        # --- NEW: Start with the final list of existing image URLs from the frontend ---
+        final_image_urls = []
+
+        if 'data' in request.form:
+            try:
+                data = json.loads(request.form['data'])
+                # If the frontend sends a final list of URLs to keep, use that as our starting point.
+                if 'image_urls' in data:
+                    final_image_urls = data['image_urls']
+            except json.JSONDecodeError:
+                return {"success": False, "message": "Invalid JSON in 'data' field"}, 400
         
-        # Update loop for text fields
+        # --- Handle the upload of NEW images ---
+        if 'images' in request.files:
+            files = request.files.getlist('images')
+            if files and files[0].filename != '':
+                for file in files:
+                    # (Your existing validation logic is perfect here)
+                    if not allowed_file(file.filename): return {"success": False, "message": f"Invalid file type: {file.filename}."}, 400
+                    file.seek(0, os.SEEK_END)
+                    if file.tell() > MAX_CONTENT_LENGTH: return {"success": False, "message": f"File too large: {file.filename}."}, 400
+                    file.seek(0)
+                    try:
+                        upload_result = cloudinary.uploader.upload(file)
+                        # Append the newly uploaded URL to our final list.
+                        final_image_urls.append(upload_result['secure_url'])
+                    except Exception as e:
+                        return {"success": False, "message": f"Image upload failed: {str(e)}"}, 500
+        
+        # --- Update the database with the final, complete list of images ---
+        listing.image_urls = final_image_urls
+        flag_modified(listing, "image_urls")
+
+        # --- Update loop for all other text fields ---
         for field in ['title', 'description', 'street_address', 'city', 'state', 'pincode', 'propertyType', 
                       'monthlyRent', 'securityDeposit', 'bedrooms', 'bathrooms', 'seating', 'area', 
                       'furnishing', 'amenities']:
             if field in data:
                 setattr(listing, field, data[field])
         
-        # Manually flag JSON fields if they were part of the update.
         if 'amenities' in data:
             flag_modified(listing, "amenities")
-        if 'images' in request.files and request.files.getlist('images')[0].filename != '':
-            flag_modified(listing, "image_urls")
 
         db.session.commit()
-        return self.get(listing_id)
+        return self.get(listing_id) # Return the full, updated listing
 
     @jwt_required()
     def delete(self, listing_id):
@@ -349,5 +350,6 @@ api.add_resource(ListingResource, "/listings/<int:listing_id>")
 api.add_resource(ListingImageUpload, "/listings/<int:listing_id>/images")
 api.add_resource(ListingSearch, "/listings/search")
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
+
 
 
