@@ -109,7 +109,6 @@ class BookingCreate(Resource):
         # If the user has never booked before, then we check the daily capacity.
         total_attendees_on_day = db.session.query(func.sum(Booking.attendees)).filter(
             Booking.listing_id == listing_id,
-            Booking.appointment_date == booking_date,
             Booking.status.in_(["Confirmed", "Pending"])
         ).scalar() or 0
 
@@ -121,7 +120,7 @@ class BookingCreate(Resource):
         booking = Booking(
             user_id=user_id,
             listing_id=listing_id,
-            appointment_date=booking_date,
+            booking_date=datetime.utcnow().strftime("%d-%m-%Y"),
             attendees=attendees
         )
         db.session.add(booking)
@@ -191,6 +190,7 @@ api.add_resource(MyBookings, "/bookings/my")
 api.add_resource(OwnerBookings, "/bookings/owner")
 api.add_resource(BookingUpdate, "/bookings/<int:booking_id>")
 api.add_resource(BookingCancel, "/bookings/<int:booking_id>/cancel")
+
 
 
 
