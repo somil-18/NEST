@@ -223,7 +223,7 @@ class UserProfileFetch(Resource):
     def get(self):
         """
         Fetches a complete user profile, including listings for owners
-        and appointments for both users and owners.
+        and bookings for both users and owners, sorted by creation date.
         """
         user_id = get_jwt_identity()
         user = User.query.get_or_404(user_id)
@@ -236,20 +236,24 @@ class UserProfileFetch(Resource):
             "profile_image_url": user.profile_image_url
         }
 
+        # --- ROLE-BASED LOGIC WITH CORRECTED SORTING ---
+
         if user.role.lower() == 'owner':
             # For owners, get their listings...
             owner_listings = user.listings
             profile_data['my_listings'] = [serialize_listing_for_profile(l) for l in owner_listings]
 
-            # ...and get all appointments for those listings.
+            # ...and get all bookings for those listings, sorted by creation date.
             owner_listing_ids = [l.id for l in owner_listings]
-            received_appointments = Booking.query.filter(Booking.listing_id.in_(owner_listing_ids)).order_by(Booking.appointment_date.desc()).all()
-            profile_data['received_appointments'] = [serialize_booking(b) for b in received_appointments]
+            received_bookings = Booking.query.filter(
+                Booking.listing_id.in_(owner_listing_ids)
+            ).order_by(Booking.created_at.desc()).all() # <-- THE FIX
+            profile_data['received_bookings'] = [serialize_booking(b) for b in received_bookings]
 
         elif user.role.lower() == 'user':
-            # For regular users, get the appointments they have made.
-            my_appointments = user.bookings
-            profile_data['my_appointments'] = [serialize_booking_for_self(b) for b in my_appointments]
+            # For regular users, get the bookings they have made, sorted by creation date.
+            my_bookings = Booking.query.filter_by(user_id=user_id).order_by(Booking.created_at.desc()).all() # <-- THE FIX
+            profile_data['my_bookings'] = [serialize_booking_for_self(b) for b in my_bookings]
         
         return {"success": True, "data": profile_data}
 
@@ -358,6 +362,7 @@ api.add_resource(TokenRefresh, "/refresh")
 api.add_resource(UserProfileFetch, "/profile")
 api.add_resource(UserProfileUpdate, "/profile")
 api.add_resource(UserProfileDelete, "/profile")
+
 
 
 
