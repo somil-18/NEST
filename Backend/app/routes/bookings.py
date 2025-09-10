@@ -57,7 +57,10 @@ def serialize_booking_for_self(booking):
 class BookingCreate(Resource):
     @jwt_required()
     def post(self):
-        """Schedules a new appointment for the CURRENT DAY."""
+        """
+        Schedules a new appointment for the CURRENT DAY.
+        Allows multiple users to book until the daily capacity is met.
+        """
         user_id = int(get_jwt_identity())
         data = request.get_json()
         
@@ -77,15 +80,15 @@ class BookingCreate(Resource):
         if listing.owner_id == user_id:
             return {"success": False, "message": "You cannot book for your own listing"}, 403
 
-        existing_booking = Booking.query.filter_by(user_id=user_id, listing_id=listing_id).first()
-        if existing_booking:
-            return {"success": False, "message": "You have already booked this listing."}, 409
+        # --- THIS IS THE FIX ---
+        # The overly restrictive check for a user's past bookings has been removed.
+        # Now we only check the total capacity for the day.
+        # ----------------------
 
-        # --- THIS IS THE CORRECTED QUERY ---
-        # It now uses `cast` to compare the date part of the `created_at` timestamp.
+        # Check today's capacity using the created_at timestamp.
         total_attendees_on_day = db.session.query(func.sum(Booking.attendees)).filter(
             Booking.listing_id == listing_id,
-            cast(Booking.created_at, Date) == today, # <-- The Fix
+            cast(Booking.created_at, Date) == today,
             Booking.status.in_(["Confirmed", "Pending"])
         ).scalar() or 0
 
@@ -93,7 +96,7 @@ class BookingCreate(Resource):
             remaining_capacity = listing.seating - total_attendees_on_day
             return {"success": False, "message": f"Daily capacity reached. Only {remaining_capacity} spots left for today."}, 409
 
-        # Create the new booking. No date is needed as created_at is automatic.
+        # Create the new booking.
         booking = Booking(user_id=user_id, listing_id=listing_id, attendees=attendees)
         db.session.add(booking)
         db.session.commit()
@@ -153,3 +156,4 @@ api.add_resource(MyBookings, "/bookings/my")
 api.add_resource(OwnerBookings, "/bookings/owner")
 api.add_resource(BookingUpdate, "/bookings/<int:booking_id>")
 api.add_resource(BookingCancel, "/bookings/<int:booking_id>/cancel")
+
