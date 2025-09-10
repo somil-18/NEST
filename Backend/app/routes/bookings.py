@@ -25,10 +25,16 @@ def serialize_listing_summary(listing):
     """Safely serializes summary listing information for a booking."""
     if not listing: return None
     return {
-        "id": listing.id, "title": listing.title, "street_address": listing.street_address,
-        "city": listing.city, "state": listing.state,
-        "main_image_url": listing.image_urls[0] if listing.image_urls else None
+        "id": listing.id, "title": listing.title, "description": listing.description,
+        "street_address": listing.street_address, "city": listing.city, "state": listing.state, "pincode": listing.pincode,
+        "propertyType": listing.propertyType, "monthlyRent": listing.monthlyRent, "securityDeposit": listing.securityDeposit,
+        "bedrooms": listing.bedrooms, "bathrooms": listing.bathrooms, "seating": listing.seating,
+        "area": listing.area, "furnishing": listing.furnishing, "amenities": listing.amenities or [],
+        "pid": listing.pid, "ownerName": listing.ownerName, "is_verified": listing.is_verified,
+        "created_at": listing.created_at.isoformat() if listing.created_at else None,
+        "image_urls": listing.image_urls or []
     }
+
 
 def serialize_booking(booking):
     """Translates the database object into the desired JSON format."""
@@ -144,6 +150,7 @@ api.add_resource(MyBookings, "/bookings/my")
 api.add_resource(OwnerBookings, "/bookings/owner")
 api.add_resource(BookingUpdate, "/bookings/<int:booking_id>")
 api.add_resource(BookingCancel, "/bookings/<int:booking_id>/cancel")
+
 
 
 
