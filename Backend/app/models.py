@@ -58,6 +58,7 @@ class Listing(db.Model):
     pid = db.Column(db.String(50), unique=True, nullable=True, index=True)
     ownerName = db.Column(db.String(50), nullable=True)
     is_verified = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
     image_urls = db.Column(db.JSON, nullable=True)
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
 
@@ -99,6 +100,7 @@ class TokenBlocklist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     jti = db.Column(db.String(36), nullable=False, index=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+
 
 
 
