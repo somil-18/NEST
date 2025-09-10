@@ -39,7 +39,8 @@ def serialize_listing_for_dashboard(listing, status):
         "bathrooms": listing.bathrooms, "seating": listing.seating,
         "area": listing.area, "furnishing": listing.furnishing,
         "amenities": listing.amenities or [], "image_urls": listing.image_urls or [],
-        "availability_status": status # <-- The new field
+        "created_at": listing.created_at.isoformat() if listing.created_at else None,
+        "availability_status": status 
     }
 
 def serialize_booking_for_dashboard(booking):
@@ -131,3 +132,4 @@ class OwnerDashboard(Resource):
 
 
 api.add_resource(OwnerDashboard, "/owner/dashboard")
+
