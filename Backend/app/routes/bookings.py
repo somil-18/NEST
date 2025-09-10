@@ -57,10 +57,7 @@ def serialize_booking_for_self(booking):
 class BookingCreate(Resource):
     @jwt_required()
     def post(self):
-        """
-        Schedules a new appointment for the CURRENT DAY.
-        Allows multiple users to book until the daily capacity is met.
-        """
+        """Schedules a new appointment for the CURRENT DAY."""
         user_id = int(get_jwt_identity())
         data = request.get_json()
         
@@ -80,21 +77,18 @@ class BookingCreate(Resource):
         if listing.owner_id == user_id:
             return {"success": False, "message": "You cannot book for your own listing"}, 403
 
-        # --- THIS IS THE FIX ---
-        # The overly restrictive check for a user's past bookings has been removed.
-        # Now we only check the total capacity for the day.
-        # ----------------------
-
-        # Check today's capacity using the created_at timestamp.
-        total_attendees_on_day = db.session.query(func.sum(Booking.attendees)).filter(
+        existing_booking_today = Booking.query.filter(
+            Booking.user_id == user_id,
             Booking.listing_id == listing_id,
-            cast(Booking.created_at, Date) == today,
-            Booking.status.in_(["Confirmed", "Pending"])
-        ).scalar() or 0
+            cast(Booking.created_at, Date) == today
+        ).first()
 
-        if total_attendees_on_day + attendees > listing.seating:
-            remaining_capacity = listing.seating - total_attendees_on_day
-            return {"success": False, "message": f"Daily capacity reached. Only {remaining_capacity} spots left for today."}, 409
+        if existing_booking_today:
+            return {"success": False, "message": "You have already booked this listing for today."}, 409
+
+        # --- CAPACITY CHECK REMOVED ---
+        # The following lines that checked for seating capacity have been deleted
+        # to allow unlimited bookings for any listing.
 
         # Create the new booking.
         booking = Booking(user_id=user_id, listing_id=listing_id, attendees=attendees)
@@ -156,4 +150,5 @@ api.add_resource(MyBookings, "/bookings/my")
 api.add_resource(OwnerBookings, "/bookings/owner")
 api.add_resource(BookingUpdate, "/bookings/<int:booking_id>")
 api.add_resource(BookingCancel, "/bookings/<int:booking_id>/cancel")
+
 
