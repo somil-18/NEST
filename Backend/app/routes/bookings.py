@@ -57,7 +57,6 @@ def serialize_booking_for_self(booking):
 class BookingCreate(Resource):
     @jwt_required()
     def post(self):
-        """Schedules a new appointment for the CURRENT DAY."""
         user_id = int(get_jwt_identity())
         data = request.get_json()
         
@@ -79,23 +78,18 @@ class BookingCreate(Resource):
 
         existing_booking_today = Booking.query.filter(
             Booking.user_id == user_id,
-            Booking.listing_id == listing_id,
-            cast(Booking.created_at, Date) == today
+            Booking.listing_id == listing_id
         ).first()
 
         if existing_booking_today:
-            return {"success": False, "message": "You have already booked this listing for today."}, 409
-
-        # --- CAPACITY CHECK REMOVED ---
-        # The following lines that checked for seating capacity have been deleted
-        # to allow unlimited bookings for any listing.
+            return {"success": False, "message": "You have already booked this listing"}, 409
 
         # Create the new booking.
         booking = Booking(user_id=user_id, listing_id=listing_id, attendees=attendees)
         db.session.add(booking)
         db.session.commit()
         
-        return {"success": True, "data": serialize_booking(booking), "message": "Booking scheduled for today"}, 201
+        return {"success": True, "data": serialize_booking(booking), "message": "Booking scheduled successfully"}, 201
 
 
 class MyBookings(Resource):
@@ -150,5 +144,6 @@ api.add_resource(MyBookings, "/bookings/my")
 api.add_resource(OwnerBookings, "/bookings/owner")
 api.add_resource(BookingUpdate, "/bookings/<int:booking_id>")
 api.add_resource(BookingCancel, "/bookings/<int:booking_id>/cancel")
+
 
 
