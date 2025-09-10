@@ -25,6 +25,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+
 def serialize_listing_for_profile(listing):
     """Creates a compact summary of a listing for the owner's profile page."""
     if not listing: return None
@@ -36,7 +37,7 @@ def serialize_listing_for_profile(listing):
         "area": listing.area, "furnishing": listing.furnishing, "amenities": listing.amenities or [],
         "pid": listing.pid, "ownerName": listing.ownerName, "is_verified": listing.is_verified,
         "created_at": listing.created_at.isoformat() if listing.created_at else None,
-        "image_urls": listing.image_urls or [], "owner": serialize_owner(listing.owner)
+        "image_urls": listing.image_urls or []
     }
 
 
@@ -367,6 +368,7 @@ api.add_resource(TokenRefresh, "/refresh")
 api.add_resource(UserProfileFetch, "/profile")
 api.add_resource(UserProfileUpdate, "/profile")
 api.add_resource(UserProfileDelete, "/profile")
+
 
 
 
