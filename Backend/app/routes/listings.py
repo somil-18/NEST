@@ -36,6 +36,7 @@ def serialize_listing_full_detail(listing):
         "bedrooms": listing.bedrooms, "bathrooms": listing.bathrooms, "seating": listing.seating,
         "area": listing.area, "furnishing": listing.furnishing, "amenities": listing.amenities or [],
         "pid": listing.pid, "ownerName": listing.ownerName, "is_verified": listing.is_verified,
+        "created_at": listing.created_at.isoformat() if listing.created_at else None,
         "image_urls": listing.image_urls or [], "owner": serialize_owner(listing.owner)
     }
 
@@ -453,6 +454,7 @@ api.add_resource(ListingSearch, "/listings/search")
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
 
 api.add_resource(ListingVerification, "/listings/<int:listing_id>/verify")
+
 
 
 
