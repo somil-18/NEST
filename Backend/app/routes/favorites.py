@@ -42,6 +42,7 @@ def serialize_listing_for_favorites(listing):
         "furnishing": listing.furnishing,
         "amenities": listing.amenities or [],
         "pid": listing.pid, "ownerName": listing.ownerName, "is_verified": listing.is_verified,
+        "created_at": listing.created_at.isoformat() if listing.created_at else None,
         "image_urls": listing.image_urls or [], # Return all images
         "owner": serialize_owner_summary(listing.owner) # Include nested owner details
     }
@@ -101,3 +102,4 @@ class FavoriteResource(Resource):
 
 api.add_resource(FavoriteList, "/favorites")
 api.add_resource(FavoriteResource, "/favorites/<int:listing_id>")
+
