@@ -1,28 +1,23 @@
-# --- Cleaned up and consolidated imports ---
 from datetime import date
 from flask import request, Blueprint
 from flask_restful import Api, Resource
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from sqlalchemy import func, cast, Date # Import 'cast' and 'Date'
+from sqlalchemy import func, cast, Date
 from sqlalchemy.orm import joinedload
 
 from ..extensions import db
 from ..models import Listing, Booking, User
 
-# Create Blueprint
+# create Blueprint
 bookings_bp = Blueprint('bookings', __name__)
 api = Api(bookings_bp)
 
 
-# --- Helper functions updated to use created_at ---
-
 def serialize_user_summary(user):
-    """Safely serializes public user information."""
     if not user: return None
     return { "id": user.id, "username": user.username, "email": user.email, "mobile_no": user.mobile_no }
 
 def serialize_listing_summary(listing):
-    """Safely serializes summary listing information for a booking."""
     if not listing: return None
     return {
         "id": listing.id, "title": listing.title, "description": listing.description,
@@ -37,11 +32,10 @@ def serialize_listing_summary(listing):
 
 
 def serialize_booking(booking):
-    """Translates the database object into the desired JSON format."""
     if not booking: return None
     return {
         "id": booking.id,
-        "booking_date": booking.created_at.date().isoformat(), # <-- USE DATE FROM created_at
+        "booking_date": booking.created_at.date().isoformat(),
         "attendees": booking.attendees,
         "status": booking.status,
         "listing": serialize_listing_summary(booking.listing),
@@ -49,11 +43,10 @@ def serialize_booking(booking):
     }
 
 def serialize_booking_for_self(booking):
-    """A special serializer for the /bookings/my endpoint."""
     if not booking: return None
     return {
         "id": booking.id,
-        "booking_date": booking.created_at.date().isoformat(), # <-- USE DATE FROM created_at
+        "booking_date": booking.created_at.date().isoformat(), 
         "attendees": booking.attendees,
         "status": booking.status,
         "listing": serialize_listing_summary(booking.listing)
@@ -90,7 +83,7 @@ class BookingCreate(Resource):
         if existing_booking_today:
             return {"success": False, "message": "You have already booked this listing"}, 409
 
-        # Create the new booking.
+        # create the new booking.
         booking = Booking(user_id=user_id, listing_id=listing_id, attendees=attendees)
         db.session.add(booking)
         db.session.commit()
@@ -150,6 +143,7 @@ api.add_resource(MyBookings, "/bookings/my")
 api.add_resource(OwnerBookings, "/bookings/owner")
 api.add_resource(BookingUpdate, "/bookings/<int:booking_id>")
 api.add_resource(BookingCancel, "/bookings/<int:booking_id>/cancel")
+
 
 
 
