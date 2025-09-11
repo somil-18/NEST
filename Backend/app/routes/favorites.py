@@ -9,9 +9,7 @@ favorites_bp = Blueprint('favorites', __name__)
 api = Api(favorites_bp)
 
 
-# --- NEW: Helper function to serialize the owner's public data ---
 def serialize_owner_summary(owner):
-    """Creates a compact summary of the owner's details."""
     if not owner: return None
     return {
         "id": owner.id,
@@ -20,9 +18,7 @@ def serialize_owner_summary(owner):
     }
 
 
-# --- REPLACED: This function now serializes ALL listing details ---
 def serialize_listing_for_favorites(listing):
-    """Creates a complete, detailed dictionary for a favorited listing."""
     if not listing: return None
     return {
         "id": listing.id,
@@ -57,15 +53,12 @@ class FavoriteList(Resource):
             
         favorite_listings = user.favorites
         
-        # --- THIS IS THE CHANGE ---
-        # Use the new, more detailed serializer.
         return {"success": True, "data": [serialize_listing_for_favorites(l) for l in favorite_listings]}
 
 
 class FavoriteResource(Resource):
     @jwt_required()
     def post(self, listing_id):
-        """Adds a listing to the user's favorites and returns the full listing object."""
         user_id = int(get_jwt_identity())
         user = User.query.get_or_404(user_id)
         listing = Listing.query.get_or_404(listing_id)
@@ -76,7 +69,6 @@ class FavoriteResource(Resource):
         user.favorites.append(listing)
         db.session.commit()
 
-        # --- BEST PRACTICE: Return the data that was just created ---
         return {
             "success": True, 
             "data": serialize_listing_for_favorites(listing),
@@ -85,7 +77,6 @@ class FavoriteResource(Resource):
 
     @jwt_required()
     def delete(self, listing_id):
-        """Removes a listing from the user's favorites."""
         user_id = int(get_jwt_identity())
         user = User.query.get_or_404(user_id)
         listing = Listing.query.get_or_404(listing_id)
@@ -96,10 +87,10 @@ class FavoriteResource(Resource):
         user.favorites.remove(listing)
         db.session.commit()
         
-        # A 204 No Content response is a professional standard for a successful delete.
         return '', 204
 
 
 api.add_resource(FavoriteList, "/favorites")
 api.add_resource(FavoriteResource, "/favorites/<int:listing_id>")
+
 
