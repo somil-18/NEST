@@ -12,7 +12,7 @@ import EmailVerification from "./pages/verification/EmailVerification";
 import ForgotPassword from "./pages/forgot_password/ForgotPassword";
 import OwnerDashboard from "./pages/owner/OwnerDashboard";
 import OwnerLayout from "./layouts/OwnerLayout";
-import AddListingPage from "./pages/owner/AddListing";
+import AddListing from "./pages/owner/AddListing";
 import UserLayout from "./layouts/UserLayout";
 import UserProfile from "./pages/user/UserProfile";
 import UserFavourites from "./pages/user/UserFavourites";
@@ -48,7 +48,8 @@ const App = () => {
           }
         >
           <Route index element={<OwnerDashboard />} />
-          <Route path="add-listing" element={<AddListingPage />} />
+          <Route path="add-listing" element={<AddListing edit={false} />} />
+          <Route path="edit-listing/:id" element={<AddListing edit={true} />} />
         </Route>
         <Route
           path="/user"

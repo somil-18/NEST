@@ -17,6 +17,7 @@ import { Mail } from "lucide-react";
 import { colors } from "@/utils/colors";
 import axios from "axios";
 import { API_URL } from "@/utils/constants";
+import { toast } from "sonner";
 
 // Yup validation schema for forgot password
 const forgotPasswordSchema = Yup.object({
@@ -39,8 +40,17 @@ export default function ForgotPasswordDialog() {
       setLoading(true);
       try {
         const response = await axios.post(`${API_URL}/forgot-password`, values);
+        if (response.data?.success) {
+          toast.success(
+            response.data.message || "Password reset link sent to your email."
+          );
+        }
         console.log(response);
       } catch (error) {
+        toast.error(
+          error.response?.data?.message ||
+            "Error sending reset link. Please try again."
+        );
         console.log(error);
       } finally {
         setLoading(false);

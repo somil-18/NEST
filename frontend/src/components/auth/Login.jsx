@@ -10,6 +10,8 @@ import { Link, useNavigate } from "react-router-dom";
 import ForgotPasswordDialog from "./ForgotPasswordDialog";
 import axios from "axios";
 import { API_URL } from "@/utils/constants";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 // Yup validation schema for login
 const loginValidationSchema = Yup.object({
@@ -28,6 +30,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user"));
@@ -44,18 +47,13 @@ export default function Login() {
       setLoading(true);
       try {
         const response = await axios.post(`${API_URL}/login`, values);
-        console.log(response);
         if (response?.data?.success) {
-          localStorage.setItem("token", response.data.access_token);
-          localStorage.setItem("refresh_token", response.data.refresh_token);
-          localStorage.setItem("user", JSON.stringify(response.data));
-        }
-        if (response?.data?.user?.role === "user") {
+          toast.success("Login successful!");
+          login(response.data);
           navigate("/");
-        } else if (response?.data?.user?.role === "owner") {
-          navigate("/owner");
         }
       } catch (error) {
+        toast(error?.response?.data?.message || "Login failed. Please try again.");
         console.log(error);
       } finally {
         setLoading(false);

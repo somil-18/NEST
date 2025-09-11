@@ -188,32 +188,18 @@ export default function ChangePassword({ isOpen, onClose }) {
       setIsSubmitting(true);
 
       try {
-        const response = await axios.post(
-          `${API_URL}/change-password`,
-          {
-            old_password: values.old_password,
-            new_password: values.new_password,
-            confirm_password: values.confirm_password,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        );
+        const response = await axios.post(`${API_URL}/change-password`, {
+          old_password: values.old_password,
+          new_password: values.new_password,
+          confirm_password: values.confirm_password,
+        });
 
         if (response.data?.success) {
           toast.success("🎉 Password changed successfully!", {
-            description: "Please log in again with your new password",
             duration: 5000,
           });
           resetForm();
           onClose();
-
-          // Optional: Redirect to login after delay
-          setTimeout(() => {
-            window.location.href = "/login";
-          }, 2000);
         } else {
           toast.error("❌ Failed to change password", {
             description:

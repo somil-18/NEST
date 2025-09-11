@@ -12,6 +12,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { API_URL } from "@/utils/constants";
+import { toast } from "sonner";
 
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
@@ -33,7 +34,19 @@ export default function Register() {
       try {
         const response = await axios.post(`${API_URL}/register`, values);
         console.log(response);
+        if (response.data.success) {
+          formik.resetForm();
+          toast.success(
+            response.data?.message,
+            "Registration successful! Please verify your email."
+          );
+          navigate("/login");
+        }
       } catch (error) {
+        toast.error(
+          error.response?.data?.message ||
+            "Registration failed. Please try again."
+        );
         console.log(error);
       } finally {
         setLoading(false);

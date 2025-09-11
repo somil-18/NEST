@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useEffect, useState } from "react";
 import { useFormik } from "formik";
 import {
@@ -24,8 +25,9 @@ import { profileValidationSchema } from "@/yup/profileValidationSchema";
 import ChangePassword from "@/components/user/ChangePassword";
 import axios from "axios";
 import { API_URL } from "@/utils/constants";
-import AppointmentCard from "@/components/user/AppointmentCard";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import BookingCard from "@/components/user/BookingCard";
 
 // Form Field Component
 const FormField = ({
@@ -57,10 +59,12 @@ export default function UserProfile() {
   const [editMode, setEditMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userData, setUserData] = useState(null);
-  const [appointments, setAppointments] = useState([]);
+  const [bookings, setBookings] = useState([]);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem("user"));
+  console.log(user)
 
   const formik = useFormik({
     initialValues: {
@@ -81,27 +85,28 @@ export default function UserProfile() {
 
   // API call to save profile data
   const handleSaveProfile = async (values) => {
-    console.log(values);
     setIsSubmitting(true);
     try {
-      const response = await axios.patch(`${API_URL}/profile`, values, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`, // if needed
-        }
-      });
-      
+      const response = await axios.patch(`${API_URL}/profile`, values);
+      console.log(response);
+
       if (response.data?.success) {
         // Update local state with new data
         setUserData({ ...userData, ...values });
-        alert("Profile updated successfully!");
+        toast.success("Profile updated successfully!");
         setEditMode(false);
       } else {
-        throw new Error(response.data?.message || 'Update failed');
+        toast.error(
+          response.data?.message ||
+            "Failed to update profile. Please try again."
+        );
       }
     } catch (error) {
       console.error("Error updating profile:", error);
-      alert(error.response?.data?.message || "Failed to update profile. Please try again.");
+      alert(
+        error.response?.data?.message ||
+          "Failed to update profile. Please try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -125,19 +130,27 @@ export default function UserProfile() {
     }
   };
 
+  const onCancel = (id) => {
+    setBookings((prev) => prev.filter((a) => a.id !== id));
+  };
+
   useEffect(() => {
     const fetchUserDetails = async () => {
       try {
+        const token = user?.access_token;
+        console.log(token)
+        if (!token) {
+          toast.error("User not authenticated");
+          return;
+        }
         setLoading(true);
         const response = await axios.get(`${API_URL}/profile`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`, // if needed
-          }
+          headers: { Authorization: `Bearer ${token}` },
         });
-        console.log(response)
+        console.log(response);
         if (response.data?.success) {
           setUserData(response.data.data);
-          setAppointments(response.data.data.my_appointments || []);
+          setBookings(response.data.data.my_bookings || []);
         }
       } catch (error) {
         console.error("Error fetching user details:", error);
@@ -165,11 +178,11 @@ export default function UserProfile() {
   };
 
   // Calculate appointment statistics
-  const appointmentStats = {
-    total: appointments.length,
-    confirmed: appointments.filter((a) => a.status === "Confirmed").length,
-    pending: appointments.filter((a) => a.status === "Pending").length,
-    completed: appointments.filter((a) => a.status === "Completed").length,
+  const bookingStats = {
+    total: bookings.length,
+    confirmed: bookings.filter((a) => a.status === "Confirmed").length,
+    pending: bookings.filter((a) => a.status === "Pending").length,
+    cancelled: bookings.filter((a) => a.status === "Cancelled").length,
   };
 
   if (loading) {
@@ -204,7 +217,7 @@ export default function UserProfile() {
               Change Password
             </Button>
           </div>
-          <p className="text-gray-600">
+          <p className="text-gray-600 hidden sm:block">
             Manage your account information and view appointment history
           </p>
         </div>
@@ -227,7 +240,7 @@ export default function UserProfile() {
                         onClick={handleCancelEdit}
                         className="text-white hover:bg-white/20"
                       >
-                        <X size={16} className="mr-2" />
+                        <X size={16} />
                         Cancel
                       </Button>
                     )}
@@ -241,12 +254,12 @@ export default function UserProfile() {
                       >
                         {isSubmitting ? (
                           <>
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                             Saving...
                           </>
                         ) : (
                           <>
-                            <Save size={16} className="mr-2" />
+                            <Save size={16} />
                             Save
                           </>
                         )}
@@ -284,7 +297,9 @@ export default function UserProfile() {
                         {userData?.username || "User"}
                       </h3>
                       <p className="text-sm text-gray-500 capitalize">
-                        {userData?.role || "Member"} • {userData?.gender}, {userData?.age} years
+                        {userData?.role || "Member"}{" "}
+                        {userData?.gender && "• " + userData?.gender}
+                        {userData?.age && ", " + userData?.age + " yrs"}
                       </p>
                       {editMode && (
                         <Button variant="outline" size="sm" className="mt-2">
@@ -463,35 +478,35 @@ export default function UserProfile() {
               <CardHeader className="bg-gradient-to-r p-2 flex items-center from-green-500 to-teal-600 text-white rounded-t-lg">
                 <CardTitle className="flex items-center gap-2">
                   <Calendar size={20} />
-                  Appointment Stats
+                  Booking Stats
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-6 py-4 space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Total Appointments</span>
+                  <span className="text-gray-600">Total Bookings</span>
                   <span
                     className="font-bold text-2xl"
                     style={{ color: colors.primary }}
                   >
-                    {appointmentStats.total}
+                    {bookingStats.total}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Confirmed</span>
                   <span className="font-semibold text-green-600">
-                    {appointmentStats.confirmed}
+                    {bookingStats.confirmed}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Pending</span>
                   <span className="font-semibold text-yellow-600">
-                    {appointmentStats.pending}
+                    {bookingStats.pending}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Completed</span>
-                  <span className="font-semibold text-blue-600">
-                    {appointmentStats.completed}
+                  <span className="text-gray-600">Cancelled</span>
+                  <span className="font-semibold text-red-600">
+                    {bookingStats.cancelled}
                   </span>
                 </div>
               </CardContent>
@@ -506,7 +521,10 @@ export default function UserProfile() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pb-5 flex items-center justify-center">
-                <Button style={{ backgroundColor: colors.primary }} onClick={() => navigate('/user/favourites')}>
+                <Button
+                  style={{ backgroundColor: colors.primary }}
+                  onClick={() => navigate("/user/favourites")}
+                >
                   Go to favourites
                 </Button>
               </CardContent>
@@ -514,33 +532,37 @@ export default function UserProfile() {
           </div>
         </div>
 
-        {/* Appointment History */}
+        {/* Bookings History */}
         <div className="mt-12">
           <Card className="shadow-lg border-0 p-0">
             <CardHeader className="bg-gradient-to-r p-2 flex items-center from-orange-500 to-red-600 text-white rounded-t-lg">
               <CardTitle className="flex items-center gap-2">
                 <Calendar size={24} />
-                My Appointments ({appointments.length})
+                My Bookings ({bookings.length})
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              {appointments.length === 0 ? (
+              {bookings.length === 0 ? (
                 <div className="text-center py-12">
                   <Calendar size={48} className="mx-auto mb-4 text-gray-400" />
                   <h3 className="text-lg font-semibold mb-2 text-gray-700">
-                    No appointments yet
+                    No bookings yet
                   </h3>
                   <p className="text-gray-500 mb-4">
-                    Start exploring properties and book appointments!
+                    Start exploring properties and book listings!
                   </p>
-                  <Button style={{ backgroundColor: colors.primary }}>
+                  <Button
+                    style={{ backgroundColor: colors.primary }}
+                    onClick={() => navigate("/listings")}
+                  >
                     Browse Properties
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {appointments.map((appointment) => (
-                    <AppointmentCard
+                  {bookings.map((appointment) => (
+                    <BookingCard
+                      onCancel={onCancel}
                       key={appointment.id}
                       appointment={appointment}
                     />

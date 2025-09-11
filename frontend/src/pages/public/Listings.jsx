@@ -385,7 +385,7 @@ const FeaturedRoomSlider = ({ rooms, favoriteIds, onFavoriteToggle }) => {
 // Room Card Component
 const RoomCard = ({ room, favoriteIds, onFavoriteToggle }) => {
   const [isProcessing, setIsProcessing] = useState(false);
-  const { user } = useAuth();
+  const user = JSON.parse(localStorage.getItem("user"));
   const navigate = useNavigate();
 
   if (!room) {
@@ -424,7 +424,7 @@ const RoomCard = ({ room, favoriteIds, onFavoriteToggle }) => {
       if (isLiked) {
         await axios.delete(`${API_URL}/favorites/${room.id}`, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${user?.access_token}`,
           },
         });
         onFavoriteToggle(room.id, false);
@@ -432,15 +432,7 @@ const RoomCard = ({ room, favoriteIds, onFavoriteToggle }) => {
           description: "Property removed from your favorites list",
         });
       } else {
-        await axios.post(
-          `${API_URL}/favorites/${room.id}`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        );
+        await axios.post(`${API_URL}/favorites/${room.id}`, {});
         onFavoriteToggle(room.id, true);
         toast.success("❤️ Added to favorites!", {
           description: "Property saved to your favorites list",
@@ -728,11 +720,8 @@ export default function Listings() {
       }
 
       try {
-        const response = await axios.get(`${API_URL}/favorites`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
+        const response = await axios.get(`${API_URL}/favorites`);
+        console.log(response);
 
         if (response.data?.success) {
           const favorites = response.data.data || [];

@@ -1,93 +1,147 @@
-import React, { useState } from "react";
-import { Plus, Home, Users, DollarSign, ArrowLeft } from "lucide-react";
+/* eslint-disable react-hooks/exhaustive-deps */
+import React, { useEffect, useState } from "react";
+import {
+  Plus,
+  Home,
+  DollarSign,
+  ArrowLeft,
+  Calendar,
+  IndianRupee,
+  BookAIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import StatsCard from "@/components/owner/StatsCard";
 import ListingCard from "@/components/owner/ListingCard";
-import TenantCard from "@/components/owner/TenantCard";
+import BookingCard from "@/components/owner/BookingCard";
 import { colors } from "@/utils/colors";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import ChangePassword from "@/components/owner/ChangePassword";
-
-// Sample data
-const sampleListings = [
-  {
-    id: 1,
-    title: "Luxury Studio Apartment",
-    location: "Bandra West, Mumbai",
-    price: 15000,
-    status: "available",
-    image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400",
-    tenants: 0,
-    dateCreated: "2024-01-15",
-  },
-  {
-    id: 2,
-    title: "Spacious 2BHK Flat",
-    location: "Koramangala, Bangalore",
-    price: 18000,
-    status: "occupied",
-    image: "https://images.unsplash.com/photo-1556020685-ae41abfc9365?w=400",
-    tenants: 1,
-    dateCreated: "2023-12-10",
-  },
-  {
-    id: 3,
-    title: "Premium PG Room",
-    location: "Sector 62, Noida",
-    price: 12000,
-    status: "maintenance",
-    image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400",
-    tenants: 0,
-    dateCreated: "2024-02-20",
-  },
-];
-
-const sampleTenants = [
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john@example.com",
-    phone: "+91 9876543210",
-    propertyId: 2,
-    propertyTitle: "Spacious 2BHK Flat",
-    moveInDate: "2024-01-20",
-    rentAmount: 18000,
-    status: "active",
-    avatar:
-      "https://ui-avatars.com/api/?name=John+Doe&background=3b82f6&color=fff",
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    email: "jane@example.com",
-    phone: "+91 9876543211",
-    propertyId: 1,
-    propertyTitle: "Luxury Studio Apartment",
-    moveInDate: "2024-02-01",
-    rentAmount: 15000,
-    status: "pending",
-    avatar:
-      "https://ui-avatars.com/api/?name=Jane+Smith&background=10b981&color=fff",
-  },
-];
+import { API_URL } from "@/utils/constants";
+import { toast } from "sonner";
+import axios from "axios";
 
 // Main Dashboard Component
 export default function OwnerDashboard() {
-  const [listings, setListings] = useState(sampleListings);
-  const [tenants, setTenants] = useState(sampleTenants);
+  const [dashboardData, setDashboardData] = useState(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  // Extract data from API response
+  const bookings = dashboardData?.all_bookings || [];
+  const listings = dashboardData?.my_listings || [];
+  const summaryStats = dashboardData?.summary_stats || {};
 
   // Dashboard Stats
   const stats = {
-    totalListings: listings.length,
-    availableListings: listings.filter((l) => l.status === "available").length,
-    occupiedListings: listings.filter((l) => l.status === "occupied").length,
-    totalTenants: tenants.length,
-    monthlyRevenue: tenants
-      .filter((t) => t.status === "active")
-      .reduce((sum, t) => sum + t.rentAmount, 0),
+    totalListings: summaryStats.total_listings || 0,
+    totalBookings: summaryStats.total_bookings || 0,
+    totalRevenue: summaryStats.total_revenue || 0,
+    availableListings: listings.filter(
+      (l) => l.availability_status === "Available"
+    ).length,
+    occupiedListings: listings.filter(
+      (l) => l.availability_status === "Occupied"
+    ).length,
+  };
+
+  const fetchDashboardData = async () => {
+    try {
+      setIsLoading(true);
+      const user = JSON.parse(localStorage.getItem("user"));
+      console.log(user);
+      if (!user || !user.access_token) {
+        toast.error("User not authenticated");
+        navigate("/");
+        return;
+      }
+      const response = await axios.get(`${API_URL}/owner/dashboard`, {
+        headers: {
+          Authorization: `Bearer ${user?.access_token}`,
+        },
+      });
+      console.log(response);
+      setDashboardData(response.data.data);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      toast.error("Failed to load dashboard data");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch dashboard data
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  // Update booking status
+  const handleUpdateBookingStatus = async (bookingId, newStatus) => {
+    try {
+      const token = localStorage.getItem("token");
+      console.log(newStatus);
+      await axios.post(
+        `${API_URL}/bookings/${bookingId}`,
+        { status: newStatus },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      console.log();
+
+      // Update local state
+      setDashboardData((prev) => ({
+        ...prev,
+        all_bookings: prev.all_bookings.map((booking) =>
+          booking.booking_id === bookingId
+            ? { ...booking, status: newStatus }
+            : booking
+        ),
+      }));
+
+      toast.success(`Booking ${newStatus.toLowerCase()} successfully`);
+    } catch (error) {
+      console.error("Error updating booking status:", error);
+      toast.error("Failed to update booking status");
+    }
+  };
+
+  // Cancel/Delete booking
+  const handleCancelBooking = async (bookingId) => {
+    if (!window.confirm("Are you sure you want to cancel this booking?")) {
+      return;
+    }
+
+    try {
+      const token = user?.access_token;
+      console.log(token);
+      if (!token) {
+        toast.error("User not authenticated");
+        return;
+      }
+      await axios.delete(`${API_URL}/bookings/${bookingId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      // Remove from local state
+      setDashboardData((prev) => ({
+        ...prev,
+        all_bookings: prev.all_bookings.filter(
+          (booking) => booking.booking_id !== bookingId
+        ),
+      }));
+
+      toast.success("Booking cancelled successfully");
+    } catch (error) {
+      console.error("Error cancelling booking:", error);
+      toast.error("Failed to cancel booking");
+    }
   };
 
   // Listing Management Functions
@@ -96,34 +150,54 @@ export default function OwnerDashboard() {
   };
 
   const handleEditListing = (listing) => {
-    alert(`Edit Listing: ${listing.title} - Form to be implemented`);
+    navigate(`/owner/edit-listing/${listing.id}`);
   };
 
-  const handleDeleteListing = (listingId) => {
+  const handleDeleteListing = async (listingId) => {
     if (window.confirm("Are you sure you want to delete this listing?")) {
-      setListings(listings.filter((l) => l.id !== listingId));
-      setTenants(tenants.filter((t) => t.propertyId !== listingId));
+      // Implementation for deleting listing
+      try {
+        const response = await axios.delete(
+          `${API_URL}/listings/${listingId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${user?.access_token}`,
+            },
+          }
+        );
+        console.log(response);
+        setDashboardData((prev) => ({
+            ...prev,
+            my_listings: prev.my_listings.filter(
+              (listing) => listing.id !== listingId
+            ),
+            summary_stats: {
+              ...prev.summary_stats,
+              total_listings: prev.summary_stats.total_listings - 1,
+            },
+          }));
+          toast.success("Listing deleted successfully");
+      } catch (error) {
+        console.log(error);
+      }
+      console.log("Delete listing:", listingId);
     }
   };
 
   const handleViewListing = (listing) => {
-    alert(`View Listing: ${listing.title} - Detail view to be implemented`);
+    navigate(`/listings/${listing.id}`);
   };
 
-  // Tenant Management Functions
-  const handleAddTenant = () => {
-    alert("Add New Tenant - Form to be implemented");
-  };
-
-  const handleDeleteTenant = (tenantId) => {
-    if (window.confirm("Are you sure you want to remove this tenant?")) {
-      setTenants(tenants.filter((t) => t.id !== tenantId));
-    }
-  };
-
-  const handleViewTenant = (tenant) => {
-    alert(`View Tenant: ${tenant.name} - Detail view to be implemented`);
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
@@ -131,6 +205,7 @@ export default function OwnerDashboard() {
         isOpen={isPasswordModalOpen}
         onClose={() => setIsPasswordModalOpen(false)}
       />
+
       {/* Enhanced Header */}
       <div className="bg-white shadow-lg border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-6">
@@ -151,7 +226,7 @@ export default function OwnerDashboard() {
                 </span>
               </h1>
               <p className="text-gray-600 mt-1 hidden sm:block">
-                Manage your properties and tenants with ease
+                Manage your properties, bookings and tenants
               </p>
             </div>
             <div className="flex-col sm:flex-row items-center space-x-4">
@@ -168,7 +243,7 @@ export default function OwnerDashboard() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Enhanced Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 mb-10">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-10">
           <StatsCard
             icon={<Home size={24} />}
             value={stats.totalListings}
@@ -176,40 +251,80 @@ export default function OwnerDashboard() {
             color="blue"
           />
           <StatsCard
-            icon={<div className="text-2xl font-bold">✓</div>}
-            value={stats.availableListings}
-            label="Available"
-            color="green"
-          />
-          <StatsCard
-            icon={<div className="text-2xl font-bold">🏠</div>}
-            value={stats.occupiedListings}
-            label="Occupied"
-            color="blue"
-          />
-          <StatsCard
-            icon={<Users size={24} />}
-            value={stats.totalTenants}
-            label="Active Tenants"
+            icon={<Calendar size={24} />}
+            value={stats.totalBookings}
+            label="Confirmed Bookings"
             color="purple"
           />
           <StatsCard
-            icon={<DollarSign size={24} />}
-            value={`₹${stats.monthlyRevenue.toLocaleString()}`}
-            label="Monthly Revenue"
+            icon={<BookAIcon size={24} />}
+            value={`${dashboardData?.all_bookings.length}`}
+            label="Total Bookings"
             color="green"
           />
+          <Link to={"/"}>
+            <StatsCard
+              icon={<DollarSign size={24} />}
+              value={`₹${stats.totalRevenue.toLocaleString()}`}
+              label="Total Revenue"
+              color="green"
+            />
+          </Link>
+        </div>
+
+        {/* Bookings Section */}
+        <div className="mb-12">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="sm:text-3xl text-2xl font-bold text-gray-800 mb-2">
+                Bookings ({bookings.length})
+              </h2>
+              <p className="text-gray-600 max-sm:text-sm">
+                Manage and monitor property bookings
+              </p>
+            </div>
+          </div>
+
+          {bookings.length === 0 ? (
+            <Card className="border-2 border-dashed border-gray-300">
+              <CardContent className="p-16 text-center">
+                <Calendar size={64} className="mx-auto mb-6 text-gray-400" />
+                <h3 className="text-2xl font-semibold mb-3 text-gray-700">
+                  No bookings yet
+                </h3>
+                <p className="text-gray-500 mb-6 text-lg">
+                  Bookings will appear here when tenants book your properties
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-6">
+              {bookings.map((booking) => (
+                <BookingCard
+                  key={booking.booking_id}
+                  booking={booking}
+                  onUpdateStatus={handleUpdateBookingStatus}
+                  onCancel={handleCancelBooking}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Enhanced Listings Section */}
         <div className="mb-12">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">
-                Property Listings ({listings.length})
+              <h2 className="sm:text-3xl text-2xl font-bold text-gray-800 mb-2">
+                Property Listings{" "}
+                <span className="hidden sm:inline">({listings.length})</span>
               </h2>
-              <p className="text-gray-600">
+              <p className="text-gray-600 hidden sm:block">
                 Manage and monitor your property portfolio
+              </p>
+              <p className="text-gray-600 sm:hidden">
+                {listings.length}{" "}
+                {listings.length > 1 ? "properties" : "property"} listed
               </p>
             </div>
             <Button
@@ -217,7 +332,7 @@ export default function OwnerDashboard() {
               className="text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5"
               style={{ background: colors.primary }}
             >
-              <Plus size={18} className="mr-2" />
+              <Plus size={18} className="" />
               Add Property
             </Button>
           </div>
@@ -247,56 +362,15 @@ export default function OwnerDashboard() {
               {listings.map((listing) => (
                 <ListingCard
                   key={listing.id}
-                  listing={listing}
+                  listing={{
+                    ...listing,
+                    price: listing.monthlyRent,
+                    location: `${listing.city}, ${listing.state}`,
+                    image: listing.image_urls?.[0] || "/placeholder-image.jpg",
+                  }}
                   onEdit={handleEditListing}
                   onDelete={handleDeleteListing}
                   onView={handleViewListing}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Enhanced Tenants Section */}
-        <div>
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">
-                Tenant Management ({tenants.length})
-              </h2>
-              <p className="text-gray-600">Monitor and manage your tenants</p>
-            </div>
-          </div>
-
-          {tenants.length === 0 ? (
-            <Card className="border-2 border-dashed border-gray-300">
-              <CardContent className="p-16 text-center">
-                <Users size={64} className="mx-auto mb-6 text-gray-400" />
-                <h3 className="text-2xl font-semibold mb-3 text-gray-700">
-                  No tenants yet
-                </h3>
-                <p className="text-gray-500 mb-6 text-lg">
-                  Tenants will appear here once they book your properties
-                </p>
-                <Button
-                  onClick={handleAddTenant}
-                  size="lg"
-                  variant="outline"
-                  className="border-2 border-gray-300 hover:border-purple-400 hover:text-purple-600"
-                >
-                  <Users size={20} className="mr-2" />
-                  Add Tenant Manually
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {tenants.map((tenant) => (
-                <TenantCard
-                  key={tenant.id}
-                  tenant={tenant}
-                  onDelete={handleDeleteTenant}
-                  onView={handleViewTenant}
                 />
               ))}
             </div>

@@ -22,7 +22,7 @@ const StatsCard = ({ icon, value, label, color }) => {
             : "from-yellow-400 to-yellow-600"
         }`}
       />
-      <CardContent className="p-6">
+      <CardContent className="p-6 flex-1">
         <div className="flex items-center justify-between">
           <div>
             <div

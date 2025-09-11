@@ -31,19 +31,17 @@ export default function EmailVerification() {
     setVerificationMessage("");
 
     try {
-      const response = await axios.post(`${API_URL}/reset-password/${token}`, {});
+      const response = await axios.get(`${API_URL}/confirm/${token}`, {});
       console.log(response);
 
       setVerificationStatus("success");
       setVerificationMessage(response.data.message);
       setUserData(response.data.user);
-
-      // Optional: Store verification status in localStorage or context
-      localStorage.setItem("emailVerified", "true");
     } catch (error) {
       setVerificationStatus("error");
       setVerificationMessage(
-        error.message || "An unexpected error occurred during verification."
+        error.response?.data?.message ||
+          "An unexpected error occurred during verification."
       );
       console.error("Email verification failed:", error);
     }

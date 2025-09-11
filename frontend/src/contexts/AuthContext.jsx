@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect } from "react";
 
 const AuthContext = createContext();
 
@@ -10,14 +10,14 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const initializeAuth = () => {
       try {
-        const storedUser = localStorage.getItem('user');
+        const storedUser = localStorage.getItem("user");
         if (storedUser) {
           const userData = JSON.parse(storedUser);
           setUser(userData); // This sets the initial state
         }
       } catch (error) {
-        console.error('Error parsing user data:', error);
-        localStorage.removeItem('user');
+        console.error("Error parsing user data:", error);
+        localStorage.removeItem("user");
       } finally {
         setLoading(false);
       }
@@ -31,27 +31,28 @@ export function AuthProvider({ children }) {
     try {
       // Create a new object to ensure React detects the change
       const newUser = { ...userData };
-      
+      console.log(newUser);
+
       // Update localStorage first
-      localStorage.setItem('user', JSON.stringify(newUser));
-      
+      localStorage.setItem("user", JSON.stringify(newUser));
+
       // Update context state - this triggers re-render of all consumers
       setUser(newUser);
-      
-      console.log('User logged in:', newUser); // Debug log
+
+      console.log("User logged in:", newUser); // Debug log
     } catch (error) {
-      console.error('Failed to store user data:', error);
+      console.error("Failed to store user data:", error);
     }
   };
 
   // Logout function - clears both localStorage and state
   const logout = () => {
     try {
-      localStorage.removeItem('user');
+      localStorage.removeItem("user");
       setUser(null); // This triggers re-render
-      console.log('User logged out'); // Debug log
+      console.log("User logged out"); // Debug log
     } catch (error) {
-      console.error('Failed to logout:', error);
+      console.error("Failed to logout:", error);
     }
   };
 
@@ -60,13 +61,11 @@ export function AuthProvider({ children }) {
     loading,
     isLogin: !!user,
     login,
-    logout
+    logout,
   };
 
   return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
   );
 }
 

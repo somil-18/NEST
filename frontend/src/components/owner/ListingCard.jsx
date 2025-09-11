@@ -11,9 +11,10 @@ const ListingCard = ({ listing, onEdit, onDelete, onView }) => {
     occupied: "bg-blue-500 shadow-blue-200",
     maintenance: "bg-yellow-500 shadow-yellow-200"
   };
+  console.log(listing)
 
   return (
-    <Card className="group overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border-0 shadow-lg p-0">
+    <Card className="group overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border-0 shadow-lg p-0 cursor-pointer">
       <div className="relative overflow-hidden">
         <img
           src={listing.image}
@@ -22,10 +23,10 @@ const ListingCard = ({ listing, onEdit, onDelete, onView }) => {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         <Badge className={`absolute top-3 right-3 ${statusColors[listing.status]} text-white border-0 shadow-lg`}>
-          {listing.status}
+          {listing.availability_status}
         </Badge>
         <div className="absolute bottom-3 left-3 text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          Created: {new Date(listing.dateCreated).toLocaleDateString()}
+          Created: {new Date(listing.created_at).toLocaleDateString()}
         </div>
       </div>
       
@@ -46,11 +47,11 @@ const ListingCard = ({ listing, onEdit, onDelete, onView }) => {
               </span>
               <span className="text-sm text-gray-500 ml-1">/month</span>
             </div>
-            <div className="text-right">
+            {/* <div className="text-right">
               <div className="text-sm font-medium text-gray-600">
                 {listing.tenants} tenant{listing.tenants !== 1 ? 's' : ''}
               </div>
-            </div>
+            </div> */}
           </div>
 
           <div className="flex justify-between items-center pt-2">

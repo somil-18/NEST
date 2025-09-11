@@ -10,7 +10,7 @@ import {
   SquareDashed,
   LucideExternalLink,
   ChevronDown,
-  Settings,
+  LucideEdit,
 } from "lucide-react";
 import {
   Sheet,
@@ -54,7 +54,8 @@ export default function Navbar() {
 
     if (isProfileDropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [isProfileDropdownOpen]);
 
@@ -63,7 +64,7 @@ export default function Navbar() {
     if (!user?.user?.username) return "U";
     return user.user.username
       .split(" ")
-      .map(name => name.charAt(0))
+      .map((name) => name.charAt(0))
       .join("")
       .toUpperCase()
       .slice(0, 2);
@@ -88,12 +89,15 @@ export default function Navbar() {
           {/* Logo and Name */}
           <NavLink to="/" className="flex items-center gap-2 select-none">
             <img
-              src="https://imgs.search.brave.com/W3e7ENketSFhHPpNSOwXwdr-myxvrhIRfI6pWTHdAGk/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9sb2dv/LmNvbS9pbWFnZS1j/ZG4vaW1hZ2VzL2t0/czkyOHBkL3Byb2R1/Y3Rpb24vZDlkYTk3/NzliZjNhYjJhZjBi/NTBhMDY1Yjc4Yzg2/OWE0NjA3YWRmNC03/MjB4NzIwLndlYnA_/dz01MTImcT03MiZm/bT13ZWJw"
+              src="/logo.png"
               alt="Nest Logo"
-              className="h-12 w-12 object-contain"
+              className="h-7 w-7 object-contain"
               draggable={false}
             />
-            <span className="text-xl font-bold" style={{ color: colors.dark }}>
+            <span
+              className="text-2xl font-bold self-end relative"
+              style={{ color: colors.primary }}
+            >
               Nest
             </span>
           </NavLink>
@@ -111,7 +115,9 @@ export default function Navbar() {
                 }
                 style={({ isActive }) => ({
                   color: isActive ? colors.primary : colors.muted,
-                  backgroundColor: isActive ? colors.lightPrimary : "transparent",
+                  backgroundColor: isActive
+                    ? colors.lightPrimary
+                    : "transparent",
                 })}
               >
                 {React.cloneElement(icon, { className: "stroke-current" })}
@@ -137,8 +143,10 @@ export default function Navbar() {
               {user && (
                 <div className="relative" ref={dropdownRef}>
                   <button
-                    onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                    className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition-colors duration-200"
+                    onClick={() =>
+                      setIsProfileDropdownOpen(!isProfileDropdownOpen)
+                    }
+                    className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
                   >
                     {/* Profile Circle */}
                     <div
@@ -158,13 +166,16 @@ export default function Navbar() {
 
                   {/* Dropdown Menu */}
                   {isProfileDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border py-2 z-50">
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border overflow-hidden z-50">
                       {/* User Info Header */}
-                      <div className="px-4 py-3 border-b">
-                        <div className="text-sm font-medium" style={{ color: colors.dark }}>
+                      <div className="px-4 py-3 border-b bg-blue-50">
+                        <div
+                          className="font-medium uppercase"
+                          style={{ color: colors.dark }}
+                        >
                           {user.user?.username || "User"}
                         </div>
-                        <div className="text-xs text-gray-500 capitalize">
+                        <div className="text-xs text-blue-700 capitalize">
                           {user.user?.role || "Member"}
                         </div>
                       </div>
@@ -195,16 +206,16 @@ export default function Navbar() {
                           </NavLink>
                         )}
 
-                        {/* Settings */}
-                        <NavLink
-                          to="/settings"
+                        {/* Change Password */}
+                        {/* <NavLink
+                          to="/change-password"
                           onClick={() => setIsProfileDropdownOpen(false)}
                           className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 transition-colors"
                           style={{ color: colors.dark }}
                         >
-                          <Settings size={16} />
-                          Settings
-                        </NavLink>
+                          <LucideEdit size={16} />
+                          Change Password
+                        </NavLink> */}
 
                         {/* Divider */}
                         <hr className="my-1" />
@@ -212,7 +223,7 @@ export default function Navbar() {
                         {/* Logout */}
                         <button
                           onClick={handleLogout}
-                          className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 transition-colors text-red-600"
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 transition-colors text-red-600 cursor-pointer"
                         >
                           <LucideExternalLink size={16} />
                           Logout
@@ -247,18 +258,22 @@ export default function Navbar() {
                   <Menu size={28} />
                 </button>
               </SheetTrigger>
-              
+
               <SheetContent side="right" className="w-80 p-4 [&>button]:hidden">
                 <SheetHeader className="p-0">
                   <SheetTitle
                     className="flex items-center justify-between text-xl font-bold"
                     style={{ color: colors.dark }}
                   >
-                    <div className="flex items-center gap-2">
+                    <div
+                      className="flex items-center gap-2"
+                      style={{ color: colors.primary }}
+                    >
                       <img
-                        src="https://imgs.search.brave.com/W3e7ENketSFhHPpNSOwXwdr-myxvrhIRfI6pWTHdAGk/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9sb2dv/LmNvbS9pbWFnZS1j/ZG4vaW1hZ2VzL2t0/czkyOHBkL3Byb2R1/Y3Rpb24vZDlkYTk3/NzliZjNhYjJhZjBi/NTBhMDY1Yjc4Yzg2/OWE0NjA3YWRmNC03/MjB4NzIwLndlYnA_/dz01MTImcT03MiZm/bT13ZWJw"
+                        src="/logo.png"
                         alt="Nest Logo"
-                        className="h-10 w-10 object-contain"
+                        className="h-7 w-7 object-contain"
+                        draggable={false}
                       />
                       Nest
                     </div>
@@ -276,7 +291,7 @@ export default function Navbar() {
 
                 {/* Mobile User Info Section */}
                 {user && (
-                  <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                  <div className="mt-6 p-4 bg-gray-100 rounded-lg outline">
                     <div className="flex items-center gap-3">
                       <div
                         className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold"
@@ -285,7 +300,10 @@ export default function Navbar() {
                         {getUserInitials()}
                       </div>
                       <div>
-                        <div className="font-medium" style={{ color: colors.dark }}>
+                        <div
+                          className="font-medium"
+                          style={{ color: colors.dark }}
+                        >
                           {user.user?.username || "User"}
                         </div>
                         <div className="text-sm text-gray-500 capitalize">
@@ -305,18 +323,22 @@ export default function Navbar() {
                       className="flex items-center gap-3 px-4 py-3 rounded-md text-base font-medium transition-colors duration-200 hover:bg-gray-100"
                       style={({ isActive }) => ({
                         color: isActive ? colors.primary : colors.dark,
-                        backgroundColor: isActive ? colors.lightPrimary : "transparent",
+                        backgroundColor: isActive
+                          ? colors.lightPrimary
+                          : "transparent",
                       })}
                       onClick={() => setIsSheetOpen(false)}
                     >
-                      {React.cloneElement(icon, { className: "stroke-current" })}
+                      {React.cloneElement(icon, {
+                        className: "stroke-current",
+                      })}
                       {label}
                     </NavLink>
                   ))}
                 </nav>
 
                 {/* Auth Section */}
-                <div className="mt-8 space-y-3">
+                <div className="mt-8 flex flex-col gap-2">
                   {!user ? (
                     <NavLink to="/login" onClick={() => setIsSheetOpen(false)}>
                       <Button
@@ -331,8 +353,15 @@ export default function Navbar() {
                     <>
                       {/* User Profile/Dashboard Links */}
                       {user.user?.role === "user" && (
-                        <NavLink to="/user/profile" onClick={() => setIsSheetOpen(false)}>
-                          <Button variant="outline" className="w-full justify-start gap-2 px-4 py-3">
+                        <NavLink
+                          to="/user/profile"
+                          onClick={() => setIsSheetOpen(false)}
+                        >
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start gap-2 px-4 py-3 text-white"
+                            style={{ background: colors.primary }}
+                          >
                             <User size={16} />
                             Profile
                           </Button>
@@ -340,8 +369,14 @@ export default function Navbar() {
                       )}
 
                       {user.user?.role === "owner" && (
-                        <NavLink to="/owner" onClick={() => setIsSheetOpen(false)}>
-                          <Button variant="outline" className="w-full justify-start gap-2 px-4 py-3">
+                        <NavLink
+                          to="/owner"
+                          onClick={() => setIsSheetOpen(false)}
+                        >
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start gap-2 px-4 py-3"
+                          >
                             <SquareDashed size={16} />
                             Dashboard
                           </Button>
@@ -349,12 +384,18 @@ export default function Navbar() {
                       )}
 
                       {/* Settings */}
-                      <NavLink to="/settings" onClick={() => setIsSheetOpen(false)}>
-                        <Button variant="outline" className="w-full justify-start gap-2 px-4 py-3">
+                      {/* <NavLink
+                        to="/settings"
+                        onClick={() => setIsSheetOpen(false)}
+                      >
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start gap-2 px-4 py-3"
+                        >
                           <Settings size={16} />
                           Settings
                         </Button>
-                      </NavLink>
+                      </NavLink> */}
 
                       {/* Logout */}
                       <Button
