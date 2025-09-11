@@ -1,4 +1,3 @@
-# --- Cleaned up and consolidated imports ---
 from flask import request, Blueprint
 from flask_restful import Api, Resource
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -13,8 +12,6 @@ owner_bp = Blueprint('owner', __name__)
 api = Api(owner_bp)
 
 
-# --- Helper Functions ---
-
 def serialize_tenant_for_dashboard(user):
     """Safely serializes a tenant's FULL public profile for the owner's dashboard."""
     if not user:
@@ -25,9 +22,7 @@ def serialize_tenant_for_dashboard(user):
         "gender": user.gender, "age": user.age, "profile_image_url": user.profile_image_url
     }
 
-# UPDATED: This serializer now includes the availability_status
 def serialize_listing_for_dashboard(listing, status):
-    """Creates a complete, detailed dictionary for a listing, including its status."""
     if not listing: return None
     return {
         "id": listing.id, "pid": listing.pid, "ownerName": listing.ownerName,
@@ -44,10 +39,8 @@ def serialize_listing_for_dashboard(listing, status):
     }
 
 def serialize_booking_for_dashboard(booking):
-    """Serializes a booking with FULL nested listing and tenant details."""
     if not booking: return None
     
-    # We must also calculate the status for the nested listing here
     today = date.today()
     total_attendees_today = db.session.query(func.sum(Booking.attendees)).filter(
         Booking.listing_id == booking.listing_id,
@@ -61,7 +54,7 @@ def serialize_booking_for_dashboard(booking):
         "booking_date": booking.created_at.date().isoformat(),
         "status": booking.status,
         "attendees": booking.attendees,
-        "listing": serialize_listing_for_dashboard(booking.listing, status), # Pass the status
+        "listing": serialize_listing_for_dashboard(booking.listing, status), 
         "tenant": serialize_tenant_for_dashboard(booking.tenant)
     }
 
@@ -78,7 +71,6 @@ class OwnerDashboard(Resource):
         today = date.today()
         owner_listing_ids = db.session.query(Listing.id).filter(Listing.owner_id == user_id).scalar_subquery()
         
-        # --- (Metric calculations are corrected to use created_at) ---
         total_listings = db.session.query(func.count(Listing.id)).filter(Listing.owner_id == user_id).scalar() or 0
         total_revenue = db.session.query(func.sum(Listing.monthlyRent)).join(
             Booking, Booking.listing_id == Listing.id
@@ -92,11 +84,9 @@ class OwnerDashboard(Resource):
             Booking.status == 'Confirmed'
         ).scalar() or 0
         
-        # --- THIS IS THE NEW LOGIC FOR my_listings ---
         my_listings_query = Listing.query.filter(Listing.owner_id == user_id).order_by(Listing.title).all()
         
         serialized_listings = []
-        # We loop through each of the owner's listings to get its individual, accurate status.
         for l in my_listings_query:
             total_attendees_today = db.session.query(func.sum(Booking.attendees)).filter(
                 Booking.listing_id == l.id,
@@ -106,10 +96,8 @@ class OwnerDashboard(Resource):
             
             status = "Booked" if l.seating is not None and total_attendees_today >= l.seating else "Available"
             
-            # Use the new serializer that includes the status
             serialized_listings.append(serialize_listing_for_dashboard(l, status))
         
-        # --- (The query for all_bookings remains the same) ---
         all_bookings = Booking.query.filter(
             Booking.listing_id.in_(owner_listing_ids)
         ).options(
@@ -125,11 +113,12 @@ class OwnerDashboard(Resource):
                 "total_revenue": round(total_revenue, 2)
             },
             "all_bookings": [b for b in serialized_bookings_list if b is not None],
-            "my_listings": serialized_listings # <-- Use the new, calculated list
+            "my_listings": serialized_listings 
         }
         
         return {"success": True, "data": dashboard_data}
 
 
 api.add_resource(OwnerDashboard, "/owner/dashboard")
+
 
