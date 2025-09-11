@@ -14,19 +14,14 @@ def create_app(config_class=Config):
     jwt.init_app(app)
     cors.init_app(app, resources={r"/*": {"origins": app.config.get('FRONTEND_URL')}}, supports_credentials=True)
     
-    # This is a special function that tells our app how to respond
-    # whenever it encounters an expired token.
     @jwt.expired_token_loader
     def expired_token_callback(jwt_header, jwt_payload):
-        """
-        Returns a consistent JSON response when an access token has expired.
-        """
         return {
             "success": False,
             "message": "Token has expired",
             "error": "token_expired"
         }, 401
-    # -------------------------------------------
+        
 
     # Configure Cloudinary
     cloudinary.config(
@@ -54,6 +49,7 @@ def create_app(config_class=Config):
         db.create_all()
 
     return app
+
 
 
 
