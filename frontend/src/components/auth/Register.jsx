@@ -1,45 +1,76 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useFormik } from "formik";
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import { User, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { User, Mail, Lock, Eye, EyeOff, Phone } from "lucide-react";
 import { colors } from "@/utils/colors";
 import {
   registrationInitialValues,
   registrationValidationSchema,
 } from "@/yup/register";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
+import { API_URL } from "@/utils/constants";
+import { toast } from "sonner";
 
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (user) {
+      navigate("/");
+    }
+  }, [navigate]);
 
   const formik = useFormik({
     initialValues: registrationInitialValues,
     validationSchema: registrationValidationSchema,
-    onSubmit: (values) => {
+    onSubmit: async (values) => {
       console.log("Form Values:", values);
-      // Handle form submission here - API call, etc.
+      setLoading(true);
+      try {
+        const response = await axios.post(`${API_URL}/register`, values);
+        console.log(response);
+        if (response.data.success) {
+          formik.resetForm();
+          toast.success(
+            response.data?.message,
+            "Registration successful! Please verify your email."
+          );
+          navigate("/login");
+        }
+      } catch (error) {
+        toast.error(
+          error.response?.data?.message ||
+            "Registration failed. Please try again."
+        );
+        console.log(error);
+      } finally {
+        setLoading(false);
+      }
     },
   });
 
   const roles = [
-    { id: "user", label: "User", color: colors.blue },
-    { id: "owner", label: "Owner", color: colors.red },
+    { id: "user", label: "User", color: colors.accent },
+    { id: "owner", label: "Owner", color: colors.primary },
   ];
 
   return (
     <div
       className="min-h-screen flex items-center justify-center px-6 py-12"
-      style={{ backgroundColor: colors.lightBlue }}
+      style={{ backgroundColor: colors.light }}
     >
       <div
         className="max-w-md w-full bg-white rounded-lg p-10 shadow-lg"
-        style={{ border: `1px solid ${colors.lightBlack}` }}
+        style={{ border: `1px solid ${colors.border}` }}
       >
         <h2
           className="text-3xl font-semibold mb-8 text-center tracking-tight"
-          style={{ color: colors.black }}
+          style={{ color: colors.dark }}
         >
           Create your account
         </h2>
@@ -50,16 +81,16 @@ export default function Register() {
             <Label
               htmlFor="username"
               className="block mb-2 font-medium"
-              style={{ color: colors.black }}
+              style={{ color: colors.dark }}
             >
-              Username <span className="text-red-600">*</span>
+              Username <span style={{ color: colors.error }}>*</span>
             </Label>
             <div className="relative">
               <span
                 className="absolute inset-y-0 left-3 flex items-center pointer-events-none"
-                style={{ color: colors.blue }}
+                style={{ color: colors.accent }}
               >
-                <User size={20} color={colors.black} />
+                <User size={20} />
               </span>
               <Input
                 id="username"
@@ -69,24 +100,74 @@ export default function Register() {
                 value={formik.values.username}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                className={`pl-10 w-full rounded border ${
-                  formik.touched.username && formik.errors.username
-                    ? "border-red-500"
-                    : "border-gray-300"
-                } text-gray-700 outline-none transition-colors`}
-                style={{ backgroundColor: colors.lightBlue }}
+                className="pl-10 w-full rounded border outline-none transition-colors"
+                style={{
+                  backgroundColor: colors.light,
+                  color: colors.dark,
+                  borderColor:
+                    formik.touched.username && formik.errors.username
+                      ? colors.error
+                      : colors.border,
+                }}
                 onFocus={(e) => {
                   e.currentTarget.style.outline = "none";
                   e.currentTarget.style.borderColor =
                     formik.touched.username && formik.errors.username
-                      ? "#ef4444"
-                      : "#d1d5db";
+                      ? colors.error
+                      : colors.border;
                 }}
               />
             </div>
             {formik.touched.username && formik.errors.username && (
-              <p className="mt-1 text-sm text-red-600">
+              <p className="mt-1 text-sm" style={{ color: colors.error }}>
                 {formik.errors.username}
+              </p>
+            )}
+          </div>
+          <div>
+            <Label
+              htmlFor="mobile_no"
+              className="block mb-2 font-medium"
+              style={{ color: colors.dark }}
+            >
+              Phone <span style={{ color: colors.error }}>*</span>
+            </Label>
+            <div className="relative">
+              <span
+                className="absolute inset-y-0 left-3 flex items-center pointer-events-none"
+                style={{ color: colors.accent }}
+              >
+                <Phone size={20} />
+              </span>
+              <Input
+                id="mobile_no"
+                name="mobile_no"
+                type="text"
+                placeholder="Your phone number"
+                value={formik.values.mobile_no}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                className="pl-10 w-full rounded border outline-none transition-colors"
+                style={{
+                  backgroundColor: colors.light,
+                  color: colors.dark,
+                  borderColor:
+                    formik.touched.mobile_no && formik.errors.mobile_no
+                      ? colors.error
+                      : colors.border,
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.outline = "none";
+                  e.currentTarget.style.borderColor =
+                    formik.touched.mobile_no && formik.errors.mobile_no
+                      ? colors.error
+                      : colors.border;
+                }}
+              />
+            </div>
+            {formik.touched.mobile_no && formik.errors.mobile_no && (
+              <p className="mt-1 text-sm" style={{ color: colors.error }}>
+                {formik.errors.mobile_no}
               </p>
             )}
           </div>
@@ -96,16 +177,16 @@ export default function Register() {
             <Label
               htmlFor="email"
               className="block mb-2 font-medium"
-              style={{ color: colors.black }}
+              style={{ color: colors.dark }}
             >
-              Email <span className="text-red-600">*</span>
+              Email <span style={{ color: colors.error }}>*</span>
             </Label>
             <div className="relative">
               <span
                 className="absolute inset-y-0 left-3 flex items-center pointer-events-none"
-                style={{ color: colors.red }}
+                style={{ color: colors.primary }}
               >
-                <Mail size={20} color={colors.black} />
+                <Mail size={20} />
               </span>
               <Input
                 id="email"
@@ -115,23 +196,28 @@ export default function Register() {
                 value={formik.values.email}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                className={`pl-10 w-full rounded border ${
-                  formik.touched.email && formik.errors.email
-                    ? "border-red-500"
-                    : "border-gray-300"
-                } text-gray-700 outline-none transition-colors`}
-                style={{ backgroundColor: colors.lightBlue }}
+                className="pl-10 w-full rounded border outline-none transition-colors"
+                style={{
+                  backgroundColor: colors.light,
+                  color: colors.dark,
+                  borderColor:
+                    formik.touched.email && formik.errors.email
+                      ? colors.error
+                      : colors.border,
+                }}
                 onFocus={(e) => {
                   e.currentTarget.style.outline = "none";
                   e.currentTarget.style.borderColor =
                     formik.touched.email && formik.errors.email
-                      ? "#ef4444"
-                      : "#d1d5db";
+                      ? colors.error
+                      : colors.border;
                 }}
               />
             </div>
             {formik.touched.email && formik.errors.email && (
-              <p className="mt-1 text-sm text-red-600">{formik.errors.email}</p>
+              <p className="mt-1 text-sm" style={{ color: colors.error }}>
+                {formik.errors.email}
+              </p>
             )}
           </div>
 
@@ -140,16 +226,16 @@ export default function Register() {
             <Label
               htmlFor="password"
               className="block mb-2 font-medium"
-              style={{ color: colors.black }}
+              style={{ color: colors.dark }}
             >
-              Password <span className="text-red-600">*</span>
+              Password <span style={{ color: colors.error }}>*</span>
             </Label>
             <div className="relative">
               <span
                 className="absolute inset-y-0 left-3 flex items-center pointer-events-none"
-                style={{ color: colors.black }}
+                style={{ color: colors.secondary }}
               >
-                <Lock size={20} color={colors.black} />
+                <Lock size={20} />
               </span>
               <Input
                 id="password"
@@ -159,18 +245,21 @@ export default function Register() {
                 value={formik.values.password}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                className={`pl-10 pr-10 w-full rounded border ${
-                  formik.touched.password && formik.errors.password
-                    ? "border-red-500"
-                    : "border-gray-300"
-                } text-gray-700 outline-none transition-colors`}
-                style={{ backgroundColor: colors.lightBlue }}
+                className="pl-10 pr-10 w-full rounded border outline-none transition-colors"
+                style={{
+                  backgroundColor: colors.light,
+                  color: colors.dark,
+                  borderColor:
+                    formik.touched.password && formik.errors.password
+                      ? colors.error
+                      : colors.border,
+                }}
                 onFocus={(e) => {
                   e.currentTarget.style.outline = "none";
                   e.currentTarget.style.borderColor =
                     formik.touched.password && formik.errors.password
-                      ? "#ef4444"
-                      : "#d1d5db";
+                      ? colors.error
+                      : colors.border;
                 }}
               />
               <button
@@ -178,7 +267,14 @@ export default function Register() {
                 onClick={() => setShowPassword(!showPassword)}
                 tabIndex={-1}
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-red-600 transition-colors"
+                className="absolute inset-y-0 right-3 flex items-center transition-colors"
+                style={{ color: colors.muted }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.color = colors.primary)
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.color = colors.muted)
+                }
               >
                 {showPassword ? (
                   <EyeOff size={20} className="cursor-pointer" />
@@ -188,7 +284,7 @@ export default function Register() {
               </button>
             </div>
             {formik.touched.password && formik.errors.password && (
-              <p className="mt-1 text-sm text-red-600">
+              <p className="mt-1 text-sm" style={{ color: colors.error }}>
                 {formik.errors.password}
               </p>
             )}
@@ -198,7 +294,7 @@ export default function Register() {
           <fieldset>
             <legend
               className="block mb-3 text-base font-semibold"
-              style={{ color: colors.black }}
+              style={{ color: colors.dark }}
             >
               Select Role
             </legend>
@@ -209,15 +305,11 @@ export default function Register() {
                   <label
                     key={id}
                     htmlFor={`role-${id}`}
-                    className={`cursor-pointer select-none rounded-full border-2 py-1 font-medium transition-colors duration-200 ${
-                      isSelected
-                        ? "text-white shadow-md"
-                        : "text-gray-700 hover:text-white"
-                    }`}
+                    className="cursor-pointer select-none rounded-full border-2 py-1 font-medium transition-colors duration-200"
                     style={{
                       backgroundColor: isSelected ? color : "transparent",
                       borderColor: color,
-                      color: isSelected ? "#fff" : "#4B5563",
+                      color: isSelected ? "#fff" : colors.muted,
                       minWidth: "110px",
                       textAlign: "center",
                     }}
@@ -230,7 +322,7 @@ export default function Register() {
                     onMouseLeave={(e) => {
                       if (!isSelected) {
                         e.currentTarget.style.backgroundColor = "transparent";
-                        e.currentTarget.style.color = "#4B5563";
+                        e.currentTarget.style.color = colors.muted;
                       }
                     }}
                   >
@@ -249,7 +341,10 @@ export default function Register() {
               })}
             </div>
             {formik.touched.role && formik.errors.role && (
-              <p className="mt-3 text-sm text-red-600 text-center">
+              <p
+                className="mt-3 text-sm text-center"
+                style={{ color: colors.error }}
+              >
                 {formik.errors.role}
               </p>
             )}
@@ -258,25 +353,29 @@ export default function Register() {
           {/* Submit Button */}
           <Button
             type="submit"
+            disabled={loading}
             className="w-full py-3 rounded-md font-semibold text-white text-lg transition-colors duration-200"
-            style={{ backgroundColor: colors.red }}
+            style={{ backgroundColor: colors.primary }}
             onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor = colors.blue)
+              (e.currentTarget.style.backgroundColor = colors.accent)
             }
             onMouseLeave={(e) =>
-              (e.currentTarget.style.backgroundColor = colors.red)
+              (e.currentTarget.style.backgroundColor = colors.primary)
             }
           >
-            Create Account
+            {loading ? "Creating Account..." : "Create Account"}
           </Button>
         </form>
 
         {/* Login Link */}
-        <p className="mt-6 text-center text-sm text-gray-600">
+        <p className="mt-6 text-center text-sm" style={{ color: colors.muted }}>
           Already have an account?{" "}
           <Link
             to="/login"
-            className="font-medium text-red-600 hover:text-blue-400 underline transition-colors"
+            className="font-medium underline transition-colors"
+            style={{ color: colors.primary }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = colors.accent)}
+            onMouseLeave={(e) => (e.currentTarget.style.color = colors.primary)}
           >
             Sign in
           </Link>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { Label } from "../ui/label";
@@ -6,94 +6,124 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { colors } from "@/utils/colors";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import ForgotPasswordDialog from "./ForgotPasswordDialog";
+import axios from "axios";
+import { API_URL } from "@/utils/constants";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 // Yup validation schema for login
 const loginValidationSchema = Yup.object({
-  email: Yup.string()
-    .email("Invalid email address")
-    .required("Email is required"),
+  username: Yup.string().required("Username is required"),
   password: Yup.string()
     .min(6, "Password must be at least 6 characters")
     .required("Password is required"),
 });
 
 const loginInitialValues = {
-  email: "",
+  username: "",
   password: "",
 };
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { login } = useAuth();
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (user) {
+      navigate("/");
+    }
+  }, [navigate]);
 
   const formik = useFormik({
     initialValues: loginInitialValues,
     validationSchema: loginValidationSchema,
-    onSubmit: (values) => {
+    onSubmit: async (values) => {
       console.log("Login Values:", values);
-      // Handle login submission here - API call, authentication, etc.
+      setLoading(true);
+      try {
+        const response = await axios.post(`${API_URL}/login`, values);
+        if (response?.data?.success) {
+          toast.success("Login successful!");
+          login(response.data);
+          navigate("/");
+        }
+      } catch (error) {
+        toast(error?.response?.data?.message || "Login failed. Please try again.");
+        console.log(error);
+      } finally {
+        setLoading(false);
+      }
     },
   });
 
   return (
     <div
       className="min-h-screen flex items-center justify-center px-6 py-12"
-      style={{ backgroundColor: colors.lightBlue }}
+      style={{ backgroundColor: colors.light }}
     >
       <div
         className="max-w-md w-full bg-white rounded-lg p-10 shadow-lg"
-        style={{ border: `1px solid ${colors.lightBlack}` }}
+        style={{ border: `1px solid ${colors.border}` }}
       >
         <h2
           className="text-3xl font-semibold mb-8 text-center tracking-tight"
-          style={{ color: colors.black }}
+          style={{ color: colors.dark }}
         >
           Welcome back
         </h2>
 
         <form onSubmit={formik.handleSubmit} className="space-y-6" noValidate>
-          {/* Email Field */}
+          {/* Username Field */}
           <div>
             <Label
-              htmlFor="email"
+              htmlFor="username"
               className="block mb-2 font-medium"
-              style={{ color: colors.black }}
+              style={{ color: colors.dark }}
             >
-              Email <span className="text-red-600">*</span>
+              Username <span style={{ color: colors.error }}>*</span>
             </Label>
             <div className="relative">
               <span
                 className="absolute inset-y-0 left-3 flex items-center pointer-events-none"
-                style={{ color: colors.red }}
+                style={{ color: colors.primary }}
               >
-                <Mail size={20} color={colors.black} />
+                <Mail size={20} />
               </span>
               <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="you@example.com"
-                value={formik.values.email}
+                id="username"
+                name="username"
+                type="text"
+                placeholder="Your username"
+                value={formik.values.username}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                className={`pl-10 w-full rounded border ${
-                  formik.touched.email && formik.errors.email
-                    ? "border-red-500"
-                    : "border-gray-300"
-                } text-gray-700 outline-none transition-colors`}
-                style={{ backgroundColor: colors.lightBlue }}
+                className="pl-10 w-full rounded border outline-none transition-colors"
+                style={{
+                  backgroundColor: colors.light,
+                  color: colors.dark,
+                  borderColor:
+                    formik.touched.username && formik.errors.username
+                      ? colors.error
+                      : colors.border,
+                }}
                 onFocus={(e) => {
                   e.currentTarget.style.outline = "none";
                   e.currentTarget.style.borderColor =
-                    formik.touched.email && formik.errors.email
-                      ? "#ef4444"
-                      : "#d1d5db";
+                    formik.touched.username && formik.errors.username
+                      ? colors.error
+                      : colors.border;
                 }}
               />
             </div>
-            {formik.touched.email && formik.errors.email && (
-              <p className="mt-1 text-sm text-red-600">{formik.errors.email}</p>
+            {formik.touched.username && formik.errors.username && (
+              <p className="mt-1 text-sm" style={{ color: colors.error }}>
+                {formik.errors.username}
+              </p>
             )}
           </div>
 
@@ -102,16 +132,16 @@ export default function Login() {
             <Label
               htmlFor="password"
               className="block mb-2 font-medium"
-              style={{ color: colors.black }}
+              style={{ color: colors.dark }}
             >
-              Password <span className="text-red-600">*</span>
+              Password <span style={{ color: colors.error }}>*</span>
             </Label>
             <div className="relative">
               <span
                 className="absolute inset-y-0 left-3 flex items-center pointer-events-none"
-                style={{ color: colors.black }}
+                style={{ color: colors.secondary }}
               >
-                <Lock size={20} color={colors.black} />
+                <Lock size={20} />
               </span>
               <Input
                 id="password"
@@ -121,18 +151,21 @@ export default function Login() {
                 value={formik.values.password}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                className={`pl-10 pr-10 w-full rounded border ${
-                  formik.touched.password && formik.errors.password
-                    ? "border-red-500"
-                    : "border-gray-300"
-                } text-gray-700 outline-none transition-colors`}
-                style={{ backgroundColor: colors.lightBlue }}
+                className="pl-10 pr-10 w-full rounded border outline-none transition-colors"
+                style={{
+                  backgroundColor: colors.light,
+                  color: colors.dark,
+                  borderColor:
+                    formik.touched.password && formik.errors.password
+                      ? colors.error
+                      : colors.border,
+                }}
                 onFocus={(e) => {
                   e.currentTarget.style.outline = "none";
                   e.currentTarget.style.borderColor =
                     formik.touched.password && formik.errors.password
-                      ? "#ef4444"
-                      : "#d1d5db";
+                      ? colors.error
+                      : colors.border;
                 }}
               />
               <button
@@ -140,7 +173,14 @@ export default function Login() {
                 onClick={() => setShowPassword(!showPassword)}
                 tabIndex={-1}
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-red-600 transition-colors"
+                className="absolute inset-y-0 right-3 flex items-center transition-colors"
+                style={{ color: colors.muted }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.color = colors.primary)
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.color = colors.muted)
+                }
               >
                 {showPassword ? (
                   <EyeOff size={20} className="cursor-pointer" />
@@ -150,7 +190,7 @@ export default function Login() {
               </button>
             </div>
             {formik.touched.password && formik.errors.password && (
-              <p className="mt-1 text-sm text-red-600">
+              <p className="mt-1 text-sm" style={{ color: colors.error }}>
                 {formik.errors.password}
               </p>
             )}
@@ -164,25 +204,29 @@ export default function Login() {
           {/* Submit Button */}
           <Button
             type="submit"
+            disabled={loading}
             className="w-full py-3 rounded-md font-semibold text-white text-lg transition-colors duration-200"
-            style={{ backgroundColor: colors.red }}
+            style={{ backgroundColor: colors.primary }}
             onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor = colors.blue)
+              (e.currentTarget.style.backgroundColor = colors.accent)
             }
             onMouseLeave={(e) =>
-              (e.currentTarget.style.backgroundColor = colors.red)
+              (e.currentTarget.style.backgroundColor = colors.primary)
             }
           >
-            Sign In
+            {loading ? "Signing In..." : "Sign In"}
           </Button>
         </form>
 
         {/* Register Link */}
-        <p className="mt-6 text-center text-sm text-gray-600">
+        <p className="mt-6 text-center text-sm" style={{ color: colors.muted }}>
           Don't have an account?{" "}
           <Link
             to="/register"
-            className="font-medium text-red-600 hover:text-blue-400 underline transition-colors"
+            className="font-medium underline transition-colors"
+            style={{ color: colors.primary }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = colors.accent)}
+            onMouseLeave={(e) => (e.currentTarget.style.color = colors.primary)}
           >
             Create account
           </Link>

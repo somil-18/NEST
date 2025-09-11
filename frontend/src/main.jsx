@@ -4,14 +4,13 @@ import "./index.css";
 import App from "./App.jsx";
 import axios from "axios";
 import { BrowserRouter } from "react-router-dom";
-import Navbar from "./components/navigation/Navbar";
-import Footer from "./components/navigation/Footer";
+import { Toaster } from "sonner";
 
-const token = localStorage.getItem("token");
+const user = JSON.parse(localStorage.getItem("user"));
 axios.interceptors.request.use(
   (request) => {
-    if (token) {
-      request.headers.Authorization = `Bearer ${token}`;
+    if (user?.access_token) {
+      request.headers.Authorization = `Bearer ${user.access_token}`;
     }
     return request;
   },
@@ -23,9 +22,17 @@ axios.interceptors.request.use(
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
-      <Navbar />
       <App />
-      <Footer />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          classNames: {
+            success: "bg-green-500 text-white",
+            error: "bg-red-500 text-white",
+            warning: "bg-yellow-500 text-black",
+          },
+        }}
+      />
     </BrowserRouter>
   </StrictMode>
 );
