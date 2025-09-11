@@ -527,7 +527,6 @@ Authorization: Bearer <access_token>
 ```json
 {
     "listing_id": 1,
-    "appointment_date": "2025-09-15",
     "attendees": 2
 }
 ```
@@ -539,7 +538,6 @@ Authorization: Bearer <access_token>
   "success": true,
     "data": {
       "id": 1,
-        "appointment_date": "2025-09-15",
         "attendees": 2,
         "status": "Pending",
         "listing": {
@@ -581,7 +579,6 @@ Authorization: Bearer <access_token>
     "data": [
         {
             "id": 2,
-            "appointment_date": "2025-08-02",
             "attendees": 2,
             "status": "Confirmed",
             "listing": {
@@ -617,7 +614,6 @@ Authorization: Bearer <access_token>
     "data": [
         {
             "id": 2,
-            "appointment_date": "2025-08-02",
             "attendees": 2,
             "status": "pending",
             "listing": {
@@ -667,7 +663,6 @@ Authorization: Bearer <access_token>
     "data": [
         {
             "id": 2,
-            "appointment_date": "2025-08-02",
             "attendees": 2,
             "status": "confiremd",
             "listing": {
@@ -934,25 +929,45 @@ Once verified, the user can log in.
 
 ### User Table
 
-| Column      | Type          | Constraints       |
-|-------------|---------------|-------------------|
-| id          | Integer       | Primary Key       |
-| username    | String(50)    | Unique, Not Null  |
-| email       | String(254)   | Unique, Not Null  |
-| password    | String(200)   | Not Null          |
-| is_verified | Boolean       | Default False     |
-| role        | String(20)    | Default 'user'    |
+| Column            | Type          | Constraints       |
+|-------------------|---------------|-------------------|
+| id                | Integer       | Primary Key       |
+| username          | String(50)    | Unique, Not Null  |
+| email             | String(254)   | Unique, Not Null  |
+| password          | String(200)   | Not Null          |
+| is_verified       | Boolean       | Default False     |
+| role              | String(20)    | Default 'user'    |
+| bio               | Text          | Nullable          |
+| address           | Text          | Nullable          |
+| gender            | String(20)    | Nullable          |
+| age               | Integer       | Nullable          |
+| mobile_no         | String(20)    | Not Null          |
+| profile_image_url | String(255)   | Nullable          |
 
 ### Listing Table
 
-| Column      | Type          | Constraints                       |
-|-------------|---------------|-----------------------------------|
-| id          | Integer       | Primary Key                       |
-| title       | String(200)   | Not Null                          |
-| description | Text          | Nullable                          |
-| price       | Float         | Not Null                          |
-| location    | String(200)   | Not Null                          |
-| owner_id    | Integer       | Foreign Key to User.id, Not Null  |
+| Column          | Type          | Constraints                       |
+|-----------------|---------------|-----------------------------------|
+| id              | Integer       | Primary Key                       |
+| title           | String(200)   | Not Null                          |
+| description     | Text          | Nullable                          |
+| street_address  | String(255)   | Not Null                          |
+| city            | String(100)   | Not Null                          |
+| state           | String(100)   | Not Null                          |
+| pincode         | String(10)    | Not Null                          |
+| monthlyRent     | Float         | Not Null                          |
+| securityDeposit | Float         | Not Null                          |
+| propertyType    | String(50)    | Not Null                          |
+| bedrooms        | Integer       | Not Null                          |
+| bathrooms       | Integer       | Not Null                          |
+| seating         | Integer       | Not Null                          |
+| area            | String(50)    | Nullable                          |
+| furnishing      | String(50)    | Nullable                          |
+| p_id            | String(50)    | Nullable                          |
+| ownerName       | String(50)    | Nullable                          |
+| is_verified     | bool          | Not Null                          |
+| image_urls      | JSON          | Not Null                          |
+| owner_id        | Integer       | Foreign Key to User.id, Not Null  |
 
 ### Booking Table
 
@@ -961,9 +976,8 @@ Once verified, the user can log in.
 | id          | Integer     | Primary Key, Auto-incrementing   |
 | user_id     | Integer     | Foreign key → User.id            |
 | listing_id  | Integer     | Foreign key → Listing.id         |
-| start_date  | Date        | Booking start date               |
-| end_date    | Date        | Booking end date                 |
 | status      | String(20)  | Pending/Confirmed/Cancelled      |
+| attendees   | Integer     | No. of attendess                 |
 | created_at  | DateTime    | Auto timestamp                   |
 
 ### Review Table
