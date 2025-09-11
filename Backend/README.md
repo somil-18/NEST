@@ -310,7 +310,9 @@ Authorization: Bearer <access_token>
     "bathrooms": 2,
     "seating": 4,
     "area": "1200 sqft", // optional
-    "furnishing": "Fully-Furnished", //optional
+    "furnishing": "Fully-Furnished", //optional,
+    "pid": "qwerty123", //optional
+    "ownerName": "Somil", //optional
     "amenities": ["Wifi", "Geyser", "TV", "Air Conditioning"]
 }
 ```
@@ -334,6 +336,8 @@ Authorization: Bearer <access_token>
     "seating": 4,
     "area": "1200 sqft",
     "furnishing": "Fully-Furnished",
+     "pid": "qwerty123",
+    "ownerName": "Somil", 
     "amenities": ["Wifi", "Geyser", "TV", "Air Conditioning"]
 },
     "message": "Listing created successfully"
