@@ -13,7 +13,6 @@ api = Api(owner_bp)
 
 
 def serialize_tenant_for_dashboard(user):
-    """Safely serializes a tenant's FULL public profile for the owner's dashboard."""
     if not user:
         return {"id": None, "username": "Deleted User"}
     return {
@@ -120,5 +119,6 @@ class OwnerDashboard(Resource):
 
 
 api.add_resource(OwnerDashboard, "/owner/dashboard")
+
 
 
