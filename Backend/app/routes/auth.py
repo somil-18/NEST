@@ -21,13 +21,11 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 MAX_CONTENT_LENGTH = 5 * 1024 * 1024 # 5 MB
 
 def allowed_file(filename):
-    """Checks if a filename has an allowed extension."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 
 def serialize_listing_for_profile(listing):
-    """Creates a compact summary of a listing for the owner's profile page."""
     if not listing: return None
     return {
         "id": listing.id, "title": listing.title, "description": listing.description,
@@ -223,7 +221,6 @@ class ResetPassword(Resource):
 
 
 # profile
-
 class UserProfileFetch(Resource):
     @jwt_required()
     def get(self):
@@ -234,15 +231,12 @@ class UserProfileFetch(Resource):
         user_id = get_jwt_identity()
         user = User.query.get_or_404(user_id)
 
-        # Start with the basic profile data
         profile_data = {
             "username": user.username, "email": user.email, "mobile_no": user.mobile_no,
             "role": user.role, "bio": user.bio, "address": user.address,
             "gender": user.gender, "age": user.age,
             "profile_image_url": user.profile_image_url
         }
-
-        # --- ROLE-BASED LOGIC WITH CORRECTED SORTING ---
 
         if user.role.lower() == 'owner':
             # For owners, get their listings...
@@ -268,15 +262,10 @@ class UserProfileFetch(Resource):
 class UserProfileUpdate(Resource):
     @jwt_required()
     def patch(self):
-        """
-        Updates the user's profile. This endpoint is flexible and handles both
-        'multipart/form-data' (for image uploads) and 'application/json' (for text-only updates).
-        """
         user_id = int(get_jwt_identity())
         user = User.query.get_or_404(user_id)
         data = {}
 
-        # This flexible logic correctly handles both request types
         if 'data' in request.form or 'image' in request.files:
             if 'image' in request.files:
                 file = request.files['image']
@@ -302,9 +291,6 @@ class UserProfileUpdate(Resource):
             data = request.get_json()
             if data is None:
                 return {"success": False, "message": "Invalid JSON or no data provided"}, 400
-        
-        # --- THIS IS THE CORRECTED UPDATE LOGIC ---
-        # Each field is now checked independently at the correct indentation level.
 
         if "username" in data:
             new_username = data["username"]
@@ -340,7 +326,7 @@ class UserProfileUpdate(Resource):
             user.address = data.get("address")
 
         db.session.commit()
-        return UserProfileFetch().get() # Return the full, updated profile
+        return UserProfileFetch().get() 
 
 
 # delete profile
@@ -368,6 +354,7 @@ api.add_resource(TokenRefresh, "/refresh")
 api.add_resource(UserProfileFetch, "/profile")
 api.add_resource(UserProfileUpdate, "/profile")
 api.add_resource(UserProfileDelete, "/profile")
+
 
 
 
