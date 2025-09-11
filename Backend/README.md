@@ -645,7 +645,7 @@ Authorization: Bearer <access_token>
 ### 4. Update booking status (Owner Only)
 
 **Endpoint:** `POST /bookings/<booking_id>`  
-**Description:** Verifies owner owns that listing and owner can update status "Confirmed" or "Cancelled"
+**Description:** Verifies owner owns that listing and owner can update status "Confirmed" or "Cancelled" or "Left"
 
 
 **Headers:**
@@ -656,7 +656,7 @@ Authorization: Bearer <access_token>
 **Request Body (JSON):**
 ```json
 {
-  "status": "Confirmed" // confirmed or cancelled
+  "status": "Confirmed" // confirmed or cancelled or left
 }
 ```
 
