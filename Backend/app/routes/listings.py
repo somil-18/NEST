@@ -96,22 +96,39 @@ class ListingCreate(Resource):
 
 
 class ListingList(Resource):
+    @jwt_required(optional=True)  # authentication optional
     def get(self):
         today = date.today()
         listings = Listing.query.all()
         result = []
         featured_listings = []
 
-        for l in listings:
-            total_attendees_today = db.session.query(func.sum(Booking.attendees)).filter(
-                Booking.listing_id == l.id,
-                cast(Booking.created_at, Date) == today, 
-                Booking.status.in_(['Confirmed', 'Pending'])
-            ).scalar() or 0
+        current_user_id = get_jwt_identity()
 
-            # determine the availability status based on capacity
-            status = "Booked" if l.seating is not None and total_attendees_today >= l.seating else "Available"
-            
+        for l in listings:
+            status = "Available" # default status
+
+            # check for a personal booking if a user is logged in
+            if current_user_id:
+                user_has_booking = Booking.query.filter(
+                    Booking.user_id == current_user_id,
+                    Booking.listing_id == l.id,
+                    Booking.status.in_(['Confirmed', 'Pending'])
+                ).first()
+                if user_has_booking:
+                    status = "Booked"
+
+            # if not personally booked, check for general availability
+            if status == "Available":
+                total_attendees_today = db.session.query(func.sum(Booking.attendees)).filter(
+                    Booking.listing_id == l.id,
+                    cast(Booking.created_at, Date) == today, 
+                    Booking.status.in_(['Confirmed', 'Pending'])
+                ).scalar() or 0
+
+                if l.seating is not None and total_attendees_today >= l.seating:
+                    status = "Booked"
+
             review_stats = db.session.query(
                 func.avg(Review.rating), func.count(Review.id)
             ).filter(Review.listing_id == l.id).first()
@@ -120,11 +137,9 @@ class ListingList(Resource):
             listing_data = serialize_listing_for_list_view(l, status, avg_rating, review_count)
             result.append(listing_data)
             
-            # check if this listing should be featured
             if avg_rating and avg_rating >= 4.0:
                 featured_listings.append(listing_data)
 
-        # sort the featured list by rating (highest first) and limit to top 5
         featured_listings.sort(key=lambda x: x.get('average_rating') or 0, reverse=True)
         
         return {
@@ -396,6 +411,7 @@ api.add_resource(ListingSearch, "/listings/search")
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
 
 api.add_resource(ListingVerification, "/listings/<int:listing_id>/verify")
+
 
 
 
