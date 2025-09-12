@@ -317,8 +317,8 @@ class ListingSearch(Resource):
             query = query.filter(or_(
                 Listing.title.ilike(f'%{keyword}%'), 
                 Listing.description.ilike(f'%{keyword}%'),
-                Listing.pid.ilike(f'%{keyword}%'), # <-- ADDED
-                Listing.ownerName.ilike(f'%{keyword}%') # <-- ADDED
+                Listing.pid.ilike(f'%{keyword}%'),
+                Listing.ownerName.ilike(f'%{keyword}%') 
             ))
 
         sort_by = request.args.get('sort_by')
@@ -352,8 +352,8 @@ class ReviewCreate(Resource):
         completed_booking = Booking.query.filter(
             Booking.user_id == user_id, 
             Booking.listing_id == listing_id,
-            Booking.status == 'Confirmed', 
-            cast(Booking.created_at, Date) < date.today() 
+            Booking.status == 'Confirmed'
+            # cast(Booking.created_at, Date) < date.today() 
         ).first()
 
         if not completed_booking:
@@ -411,6 +411,7 @@ api.add_resource(ListingSearch, "/listings/search")
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
 
 api.add_resource(ListingVerification, "/listings/<int:listing_id>/verify")
+
 
 
 
