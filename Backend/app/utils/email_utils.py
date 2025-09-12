@@ -8,7 +8,7 @@ def send_verification_email(mail, email):
     token = s.dumps(email, salt='email-confirm')
 
     frontend_url = current_app.config['FRONTEND_URL']
-    link = f"{frontend_url}/confirm/{token}"
+    link = f"{frontend_url}/verify-email/{token}"
     
     msg = Message("Confirm Your Email", recipients=[email])
     msg.body = f'Your confirmation link is {link}'
