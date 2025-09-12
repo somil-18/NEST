@@ -352,8 +352,8 @@ class ReviewCreate(Resource):
         completed_booking = Booking.query.filter(
             Booking.user_id == user_id, 
             Booking.listing_id == listing_id,
-            Booking.status == 'Confirmed'
-            # cast(Booking.created_at, Date) < date.today() 
+            Booking.status == 'Confirmed',
+            cast(Booking.created_at, Date) < date.today() 
         ).first()
 
         if not completed_booking:
@@ -411,6 +411,7 @@ api.add_resource(ListingSearch, "/listings/search")
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
 
 api.add_resource(ListingVerification, "/listings/<int:listing_id>/verify")
+
 
 
 
