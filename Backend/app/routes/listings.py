@@ -1,4 +1,3 @@
-
 import os
 import json
 from datetime import date
@@ -71,9 +70,14 @@ class ListingCreate(Resource):
         if not all(field in data for field in required_fields): return {"success": False, "message": "Missing required fields"}, 400
         if 'images' not in request.files or not request.files.getlist('images') or request.files.getlist('images')[0].filename == '':
             return {"success": False, "message": "At least one image is required."}, 400
-        # Check if PID is already taken 
-        if Listing.query.filter_by(pid=data['pid']).first():
-            return {"success": False, "message": "Property ID (pid) is already in use."}, 409
+        
+       # check pid
+        pid = data.get('pid')
+
+        # only check for uniqueness IF a pid was provided
+        if pid:
+            if Listing.query.filter_by(pid=pid).first():
+                return {"success": False, "message": "Property ID is already in use."}, 409
         
         uploaded_urls = []
         for file in request.files.getlist('images'):
@@ -392,6 +396,7 @@ api.add_resource(ListingSearch, "/listings/search")
 api.add_resource(ReviewCreate, "/listings/<int:listing_id>/reviews")
 
 api.add_resource(ListingVerification, "/listings/<int:listing_id>/verify")
+
 
 
 
