@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+venv/
+.venv/
+env/
+
+# Production builds
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs & temp
+*.log
+.DS_Store
+Thumbs.db
